@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - "tools/**"
-      - "data/data_localize_us.acf"
+      - "fat_data.bin"
+      - "fat.bin"
+      - "_file_IDs.txt"
       - ".github/workflows/localization_roundtrip.yml"
   workflow_dispatch:
 
@@ -16,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Out Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build Guardian Signs Tools
         run: bash tools/setup_guardian_tools.sh
