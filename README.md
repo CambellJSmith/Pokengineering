@@ -2,9 +2,9 @@
 
 Reverse-engineering and modding research for *Pokémon Ranger: Guardian Signs*.
 
-## Current Milestone
+## Current Milestones
 
-The project now has two connected round-trip workflows:
+The project now has a complete localization/ROM rebuild path plus a read-only inventory workflow for the main game archive.
 
 ```text
 fat_data.bin + fat.bin + _file_IDs.txt
@@ -38,7 +38,7 @@ fat_data.bin + fat.bin + _file_IDs.txt
 
 The originally unpacked files under `data/` are misaligned. The tooling therefore reconstructs required files directly from the validated raw FAT payload. The complete extracted component set is sufficient to reconstruct the Nintendo DS image without committing a `.nds` file.
 
-## Quick Start
+## Localization / ROM Quick Start
 
 Build the pinned Guardian Signs ACF/MES tools and extract localization text:
 
@@ -72,6 +72,30 @@ For a trimmed emulator-oriented image:
 bash tools/build_modded_rom.sh work/localization work/guardian_signs_modded.nds --trim
 ```
 
+## Main Game Archive Inventory
+
+`data/data_game_us.acf` is FAT file ID `0x22`. The current inventory reconstructs it from the validated raw FAT data, extracts all top-level ACF entries, and classifies them without committing generated game payloads.
+
+Run:
+
+```bash
+bash tools/setup_guardian_tools.sh
+bash tools/extract_game_data.sh
+```
+
+Generated analysis is written under:
+
+```text
+work/game_acf/analysis/
+├── catalog.csv
+├── unknown_clusters.csv
+└── summary.json
+```
+
+The measured US archive currently contains 9,689 ACF slots, 9,458 real entries, and 54,044,313 bytes of extracted/decompressed payload data. The top level includes 1,679 NCGR graphics resources, 1,545 NCLR palettes, 1,110 nested ACF archives, 790 NARC archives, 662 NSCR screens, 472 NCER cell resources, and 472 NANR animation resources. Another 2,728 entries remain unclassified at this layer.
+
+See [`docs/game_acf_inventory.md`](docs/game_acf_inventory.md) for the measured inventory, classification fields, architectural implications, and the next reverse-engineering layer.
+
 ## Tests
 
 Verify the localization ACF/MES round trip:
@@ -84,6 +108,12 @@ Verify baseline Nintendo DS reconstruction plus a size-changing NitroFS reinject
 
 ```bash
 bash tools/test_rom_rebuild.sh
+```
+
+Verify game ACF extraction and catalogue integrity:
+
+```bash
+bash tools/test_game_acf_catalog.sh
 ```
 
 See [`docs/localization_workflow.md`](docs/localization_workflow.md) for text editing and [`docs/rom_rebuild_workflow.md`](docs/rom_rebuild_workflow.md) for ROM reconstruction, FAT shifting, validation, and emulator smoke-testing guidance.

@@ -1,0 +1,33 @@
+name: Game ACF Catalogue
+
+on:
+  pull_request:
+    paths:
+      - "tools/catalog_game_acf.py"
+      - "tools/extract_game_data.sh"
+      - "tools/test_game_acf_catalog.sh"
+      - "tools/extract_nitrofs_file.py"
+      - "tools/setup_guardian_tools.sh"
+      - "fat.bin"
+      - "fat_data.bin"
+      - "_file_IDs.txt"
+      - "docs/game_acf_inventory.md"
+      - "README.md"
+      - ".github/workflows/game_acf_catalog.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  game_acf_catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v7
+
+      - name: Build Guardian Signs Tools
+        run: bash tools/setup_guardian_tools.sh
+
+      - name: Verify Game ACF Catalogue
+        run: bash tools/test_game_acf_catalog.sh
