@@ -7,6 +7,7 @@ import struct
 import tempfile
 from pathlib import Path
 
+from catalog_graphics_sets import build_graphics_catalog
 from inventory_recursive_containers import build_inventory, decompress_lz10, parse_acf, parse_narc
 
 
@@ -92,6 +93,7 @@ def main() -> int:
         root = Path(temp)
         archive_dir = root / "archive"
         output_dir = root / "analysis"
+        graphics_dir = root / "graphics"
         archive_dir.mkdir()
         (archive_dir / "0000.narc").write_bytes(top_narc)
         (archive_dir / "filelist.json").write_text(
@@ -143,7 +145,36 @@ def main() -> int:
         if by_path["acf:0000/narc:0002/narc:0000"]["effective_format"] != "NCLR palette":
             raise SystemExit("wrapped NARC child was not classified")
 
-    print("recursive container inventory synthetic test passed")
+        graphics_summary = build_graphics_catalog(archive_dir, catalog_path, graphics_dir)
+        if graphics_summary["recursive_paths_verified"] != 9:
+            raise SystemExit("graphics catalogue did not verify every recursive path")
+        if graphics_summary["graphics_resources_exported"] != 4:
+            raise SystemExit("graphics catalogue did not export every synthetic graphics resource")
+        if graphics_summary["graphics_formats"] != {"NCGR": 1, "NCLR": 2, "NSCR": 1}:
+            raise SystemExit("graphics catalogue format counts are incorrect")
+        if graphics_summary["parent_groups"] != 3 or graphics_summary["adjacent_graphics_runs"] != 3:
+            raise SystemExit("graphics catalogue structural grouping counts are incorrect")
+        if graphics_summary["same_parent_cross_format_pairs"] != 1:
+            raise SystemExit("graphics catalogue same-parent pairing facts are incorrect")
+        if graphics_summary["semantic_pairings_claimed"] != 0:
+            raise SystemExit("graphics catalogue must not guess semantic pairings")
+
+        with (graphics_dir / "resources.csv").open("r", encoding="utf-8", newline="") as source:
+            graphics_rows = list(csv.DictReader(source))
+        graphics_by_path = {row["logical_path"]: row for row in graphics_rows}
+        if set(graphics_by_path) != {
+            "acf:0000/narc:0000",
+            "acf:0000/narc:0001/acf:0001",
+            "acf:0000/narc:0001/acf:0002",
+            "acf:0000/narc:0002/narc:0000",
+        }:
+            raise SystemExit("graphics catalogue logical paths are incomplete")
+        for row in graphics_rows:
+            payload_path = graphics_dir / row["payload_path"]
+            if not payload_path.is_file():
+                raise SystemExit(f"graphics payload export is missing: {payload_path}")
+
+    print("recursive container and graphics catalogue synthetic test passed")
     return 0
 
 
