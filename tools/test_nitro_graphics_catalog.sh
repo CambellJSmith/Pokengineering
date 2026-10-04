@@ -11,6 +11,7 @@ python3 "$root_dir/tools/test_guardian_graphics_variants.py"
 python3 "$root_dir/tools/test_guardian_preview_extents.py"
 python3 "$root_dir/tools/test_ncer_sprite_roundtrip.py"
 python3 "$root_dir/tools/test_graphics_mod_build.py"
+python3 "$root_dir/tools/test_graphics_identification.py"
 python3 "$root_dir/tools/validate_guardian_ncgr_previews.py" "$catalog_dir"
 python3 "$root_dir/tools/render_guardian_graphics_safe.py" "$catalog_dir" "$temp_dir/previews" --metadata-only
 
