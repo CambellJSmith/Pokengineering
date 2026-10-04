@@ -55,11 +55,13 @@ The CI-backed recursive inventory reports:
 | Unused entries | 231 |
 | Recognized entries | 14,603 |
 | Unknown entries | 12,117 |
-| Extracted/inventoried payload bytes | 86,696,168 |
+| Sum of real row sizes, including containers and descendants | 86,696,168 |
 | Maximum logical depth | 4 |
 | Parsed ACF containers | 1,110 |
 | Parsed NARC containers | 2,364 |
 | Container parse errors | 0 |
+
+The recursive byte total is deliberately a catalogue-volume metric, not a unique on-disk size: a container row contributes its own size and each extracted descendant contributes its size again. The top-level 54,044,313-byte figure remains the appropriate decompressed payload total when double counting must be avoided.
 
 Recursive effective format counts:
 
@@ -77,7 +79,7 @@ Recursive effective format counts:
 
 The 1,577 direct NARC signatures plus 787 embedded/wrapped NARC signatures account for all 2,364 NARC containers parsed by the recursive walk. The wrapper case is significant: stopping at files whose first four bytes were not `NARC` would have left 787 archives unexpanded.
 
-The deepest reachable container path is four logical levels below the root inventory. No reachable ACF or NARC container failed structural validation, and CI verifies that recursion did not stop because of a cycle or the depth limit.
+The maximum recorded logical depth is 4, with top-level ACF slots recorded at depth 1. No reachable ACF or NARC container failed structural validation, and CI verifies that recursion did not stop because of a cycle or the depth limit.
 
 No additional raw NARC child required LZ10 decoding in the measured retail archive. The recursive implementation still supports LZ10-wrapped child containers, and CI exercises that path with synthetic nested ACF/NARC fixtures.
 
