@@ -29,8 +29,5 @@ jobs:
       - name: Check Out Repository
         uses: actions/checkout@v7
 
-      - name: Build Guardian Signs Tools
-        run: bash tools/setup_guardian_tools.sh
-
       - name: Verify Game ACF Catalogue
         run: bash tools/test_game_acf_catalog.sh
