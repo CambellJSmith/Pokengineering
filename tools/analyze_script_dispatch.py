@@ -59,7 +59,7 @@ def analyze(arm9_path, overlay_path, output, objdump):
         'table_span_note': '240 observed pointer words before a zero and text; not a proven VM bound'}
     (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     with (output / 'bank7.csv').open('w', newline='') as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator='\n')
         writer.writerow(['bank', 'index', 'slot_address', 'handler_pointer', 'code_address', 'state'])
         for index in range(240):
             slot = TABLE + 4 * index

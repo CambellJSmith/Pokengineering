@@ -103,7 +103,7 @@ If decoded overlays are missing, `bash tools/analyze_game_code.sh` regenerates t
 
 ## One capture instead of repeated manual dumps
 
-There was no active emulator/GDB process visible during this analysis. With the emulator and GDB connected, run from this repository's root:
+There was no active emulator/GDB process visible during this analysis.
 
 To start the existing local debug ROM from scratch in terminal 1:
 
