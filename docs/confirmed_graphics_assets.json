@@ -1,0 +1,35 @@
+{
+  "format": "pokengineering-confirmed-graphics-assets-v1",
+  "assets": {
+    "G00583": {
+      "preview_id": "G00583__bank_0001",
+      "semantic_name": null,
+      "status": "in_game_verified",
+      "verification": {
+        "date": "2026-10-04",
+        "method": "rebuilt_rom_visual_test",
+        "result": "An edited 16x32 source piece was preserved through NCGR, nested ACF, data_game_us.acf, and NDS rebuilding and appeared in-game."
+      },
+      "top_level_acf_index": 2140,
+      "parent_logical_path": "acf:2140",
+      "nclr": {
+        "logical_path": "acf:2140/acf:0001",
+        "child_index": 1,
+        "payload_path": "work/game_acf/graphics_catalog/payloads/acf_2140__acf_0001.nclr"
+      },
+      "ncgr": {
+        "logical_path": "acf:2140/acf:0002",
+        "child_index": 2,
+        "payload_path": "work/game_acf/graphics_catalog/payloads/acf_2140__acf_0002.ncgr"
+      },
+      "ncer": {
+        "logical_path": "acf:2140/acf:0003",
+        "child_index": 3,
+        "payload_path": "work/game_acf/graphics_catalog/payloads/acf_2140__acf_0003.ncer"
+      },
+      "ncer_bank": 1,
+      "workspace": "work/game_acf/mods/G00583_bank_0001",
+      "default_output_rom": "work/guardian_signs_G00583_mod.nds"
+    }
+  }
+}
