@@ -1,0 +1,58 @@
+{
+  "container_parse_errors": 0,
+  "containers": {
+    "ACF": 1110,
+    "NARC": 2364
+  },
+  "cycle_stops": 0,
+  "decoded_formats": {},
+  "decoded_lz10_entries": 0,
+  "depth_counts": {
+    "1": 9689,
+    "2": 12434,
+    "3": 787,
+    "4": 4041
+  },
+  "detected_formats": {
+    "ACF archive": 1110,
+    "NANR animation": 472,
+    "NARC archive": 1577,
+    "NCER cell": 3710,
+    "NCGR graphics": 3630,
+    "NCLR palette": 2655,
+    "NSCR screen": 662,
+    "embedded NARC archive": 787,
+    "unknown": 12117
+  },
+  "effective_formats": {
+    "ACF archive": 1110,
+    "NANR animation": 472,
+    "NARC archive": 1577,
+    "NCER cell": 3710,
+    "NCGR graphics": 3630,
+    "NCLR palette": 2655,
+    "NSCR screen": 662,
+    "embedded NARC archive": 787,
+    "unknown": 12117
+  },
+  "inventory_rows": 26951,
+  "max_depth": 4,
+  "max_depth_stops": 0,
+  "parsed_containers": {
+    "ACF": 1110,
+    "NARC": 2364
+  },
+  "real_entries": 26720,
+  "recognized_entries": 14603,
+  "states": {
+    "acf-compressed": 19060,
+    "acf-raw": 1252,
+    "narc-raw": 6408,
+    "unused": 231
+  },
+  "top_level_real_entries": 9458,
+  "top_level_slots": 9689,
+  "total_real_bytes": 86696168,
+  "unknown_entries": 12117,
+  "unused_entries": 231
+}

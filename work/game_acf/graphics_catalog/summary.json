@@ -1,0 +1,20 @@
+{
+  "adjacent_graphics_pairs": 9879,
+  "adjacent_graphics_runs": 1250,
+  "graphics_formats": {
+    "NANR": 472,
+    "NCER": 3710,
+    "NCGR": 3630,
+    "NCLR": 2655,
+    "NSCR": 662
+  },
+  "graphics_resources_exported": 11129,
+  "parent_groups": 1111,
+  "recursive_paths_verified": 26951,
+  "semantic_pairings_claimed": 0,
+  "verification": {
+    "graphics_headers_validated": true,
+    "payload_hashes_exact_match": true,
+    "recursive_catalog_exact_path_match": true
+  }
+}

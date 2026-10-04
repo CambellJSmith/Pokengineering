@@ -1,0 +1,23 @@
+{
+  "archive_entries": 9689,
+  "formats": {
+    "ACF archive": 1110,
+    "NANR animation": 472,
+    "NARC archive": 790,
+    "NCER cell": 472,
+    "NCGR graphics": 1679,
+    "NCLR palette": 1545,
+    "NSCR screen": 662,
+    "unknown": 2728
+  },
+  "real_entries": 9458,
+  "recognized_entries": 6730,
+  "states": {
+    "acf-compressed": 9316,
+    "acf-raw": 142,
+    "unused": 231
+  },
+  "total_real_bytes": 54044313,
+  "unknown_entries": 2728,
+  "unused_entries": 231
+}
