@@ -1,0 +1,66 @@
+
+guardian_arm9_runtime.bin:     file format binary
+
+
+Disassembly of section .data:
+
+02065a80 <.data+0x65a80>:
+ 2065a80:	e92d4ff8 	push	{r3, r4, r5, r6, r7, r8, r9, sl, fp, lr}
+ 2065a84:	e1a09000 	mov	r9, r0
+ 2065a88:	e5990020 	ldr	r0, [r9, #32]
+ 2065a8c:	e1a08001 	mov	r8, r1
+ 2065a90:	e3500000 	cmp	r0, #0
+ 2065a94:	0a000003 	beq	0x2065aa8
+ 2065a98:	e2400001 	sub	r0, r0, #1
+ 2065a9c:	e5890020 	str	r0, [r9, #32]
+ 2065aa0:	e3a00010 	mov	r0, #16
+ 2065aa4:	e8bd8ff8 	pop	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 2065aa8:	e3580000 	cmp	r8, #0
+ 2065aac:	e2488001 	sub	r8, r8, #1
+ 2065ab0:	0a000327 	beq	0x2066754
+ 2065ab4:	e59faca0 	ldr	sl, [pc, #3232]	@ 0x206675c
+ 2065ab8:	e59f4ca0 	ldr	r4, [pc, #3232]	@ 0x2066760
+ 2065abc:	e59fbca0 	ldr	fp, [pc, #3232]	@ 0x2066764
+ 2065ac0:	e3a05000 	mov	r5, #0
+ 2065ac4:	e3a06001 	mov	r6, #1
+ 2065ac8:	e5991000 	ldr	r1, [r9]
+ 2065acc:	e3510000 	cmp	r1, #0
+ 2065ad0:	03a00002 	moveq	r0, #2
+ 2065ad4:	08bd8ff8 	popeq	{r3, r4, r5, r6, r7, r8, r9, sl, fp, pc}
+ 2065ad8:	e2810004 	add	r0, r1, #4
+ 2065adc:	e5890000 	str	r0, [r9]
+ 2065ae0:	e5910000 	ldr	r0, [r1]
+ 2065ae4:	e58d0000 	str	r0, [sp]
+ 2065ae8:	e5dd1000 	ldrb	r1, [sp]
+ 2065aec:	e351001c 	cmp	r1, #28
+ 2065af0:	908ff101 	addls	pc, pc, r1, lsl #2
+ 2065af4:	ea000307 	b	0x2066718
+ 2065af8:	ea00030b 	b	0x206672c
+ 2065afc:	ea0000c4 	b	0x2065e14
+ 2065b00:	ea000019 	b	0x2065b6c
+ 2065b04:	ea0000fa 	b	0x2065ef4
+ 2065b08:	ea0000de 	b	0x2065e88
+ 2065b0c:	ea000111 	b	0x2065f58
+ 2065b10:	ea00012f 	b	0x2065fd4
+ 2065b14:	ea00014c 	b	0x206604c
+ 2065b18:	ea00003c 	b	0x2065c10
+ 2065b1c:	ea0002fd 	b	0x2066718
+ 2065b20:	ea0000ae 	b	0x2065de0
+ 2065b24:	ea00015a 	b	0x2066094
+ 2065b28:	ea000161 	b	0x20660b4
+ 2065b2c:	ea000150 	b	0x2066074
+ 2065b30:	ea0002f8 	b	0x2066718
+ 2065b34:	ea000149 	b	0x2066060
+ 2065b38:	ea000184 	b	0x2066150
+ 2065b3c:	ea000189 	b	0x2066168
+ 2065b40:	ea000206 	b	0x2066360
+ 2065b44:	ea00020b 	b	0x2066378
+ 2065b48:	ea000212 	b	0x2066398
+ 2065b4c:	ea000279 	b	0x2066538
+ 2065b50:	ea00027b 	b	0x2066544
+ 2065b54:	ea0002c7 	b	0x2066678
+ 2065b58:	ea0002c9 	b	0x2066684
+ 2065b5c:	ea00018a 	b	0x206618c
+ 2065b60:	ea000191 	b	0x20661ac
+ 2065b64:	ea0001b4 	b	0x206623c
+ 2065b68:	ea0002e7 	b	0x206670c

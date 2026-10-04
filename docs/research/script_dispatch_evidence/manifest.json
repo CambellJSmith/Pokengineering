@@ -1,0 +1,21 @@
+{
+  "format": "guardian-script-dispatch-v1",
+  "inputs": {
+    "arm9": {
+      "size": 421012,
+      "sha256": "35c06484e51f2981869e986afd6b120359d290e3ecbac25ab905cf4527fce642"
+    },
+    "overlay_003": {
+      "size": 318752,
+      "sha256": "1c768313dd59d49d249abf680e3866d5ba4202874f2edaec8ef1950a15ed03f7"
+    }
+  },
+  "inferred_spearow_command": {
+    "word": "0x1C540301",
+    "vm_type": 1,
+    "argument_count": 3,
+    "bank": 7,
+    "index": 84
+  },
+  "table_span_note": "240 observed pointer words before a zero and text; not a proven VM bound"
+}

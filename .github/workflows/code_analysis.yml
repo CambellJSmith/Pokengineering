@@ -7,6 +7,10 @@ on:
       - "tools/analyze_game_code.sh"
       - "tools/blz.py"
       - "tools/test_analyze_nds_code.py"
+      - "tools/analyze_script_dispatch.py"
+      - "tools/test_script_dispatch.py"
+      - "tools/gdb/**"
+      - "docs/research/**"
       - "docs/code_reverse_engineering.md"
       - "header.bin"
       - "arm9.bin"
@@ -29,6 +33,9 @@ jobs:
 
       - name: Run Synthetic Executable Analyzer Test
         run: python3 tools/test_analyze_nds_code.py
+
+      - name: Test Native Script Command Decoding
+        run: python3 -m unittest discover -s tools -p 'test_script_dispatch.py'
 
       - name: Analyze Guardian Signs Executables
         run: |
