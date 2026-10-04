@@ -4,7 +4,7 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 catalog_dir="${1:-$root_dir/work/game_acf/graphics_catalog}"
 output_dir="${2:-$root_dir/work/game_acf/graphics_previews}"
-renderer="$root_dir/tools/render_nitro_graphics.py"
+renderer="$root_dir/tools/render_guardian_graphics.py"
 
 [[ -f "$renderer" ]] || { printf 'missing renderer: %s\n' "$renderer" >&2; exit 1; }
 [[ -f "$catalog_dir/resources.csv" ]] || { printf 'missing graphics catalogue: %s\n' "$catalog_dir/resources.csv" >&2; exit 1; }
@@ -19,4 +19,5 @@ fi
 python3 "$renderer" "$catalog_dir" "$output_dir"
 printf 'Nitro graphics previews: %s\n' "$output_dir"
 printf 'preview index: %s\n' "$output_dir/candidate_previews.csv"
+printf 'format anomaly ledger: %s\n' "$output_dir/format_anomalies.csv"
 printf 'unresolved candidates: %s\n' "$output_dir/unresolved.csv"
