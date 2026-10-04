@@ -8,13 +8,32 @@ import tempfile
 from pathlib import Path
 
 import analyze_nds_code as code
+import blz
 
 
 def put_u32(data: bytearray, offset: int, value: int) -> None:
     struct.pack_into("<I", data, offset, value)
 
 
+def make_blz_all_a() -> tuple[bytes, bytes]:
+    """Return a tiny valid BLZ stream that decodes to twenty ASCII 'A' bytes."""
+    decoded = b"A" * 20
+    compressed_tokens = b"\x00\xE0AAA\x10"
+    header_size = 8
+    compressed_length = len(compressed_tokens) + header_size
+    extra_size = len(decoded) - compressed_length
+    packed = compressed_length | (header_size << 24)
+    encoded = compressed_tokens + struct.pack("<II", packed, extra_size)
+    return encoded, decoded
+
+
 def main() -> int:
+    encoded_test, decoded_test = make_blz_all_a()
+    assert blz.decompress(encoded_test) == decoded_test
+    info = blz.inspect(encoded_test)
+    assert info is not None
+    assert info.decoded_size == len(decoded_test)
+
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp) / "root"
         output = Path(temp) / "out"
@@ -28,13 +47,21 @@ def main() -> int:
         arm9_ram = 0x02000000
         arm9_entry = arm9_ram
         arm9 = b"ARM9hello\x00CODE"
-        arm7_rom = 0x25C
         arm7_ram = 0x03800000
         arm7_entry = arm7_ram
         arm7 = b"ARM7TEST"
         ovt_rom = 0x200
         ovt_size = 64
         overlay_data_start = ovt_rom + ovt_size
+
+        overlay0_ram = 0x02001000
+        overlay0 = struct.pack("<I", overlay0_ram + 9) + b"hello\x00ABCDEF"
+        assert len(overlay0) == 16
+        overlay1_ram = 0x02001008
+        overlay1, overlay1_decoded = make_blz_all_a()
+        assert len(overlay1_decoded) == 20
+        overlay_region = overlay0 + overlay1
+        arm7_rom = overlay_data_start + len(overlay_region)
 
         put_u32(header, code.ARM9_ROM_OFFSET, arm9_rom)
         put_u32(header, code.ARM9_ENTRY, arm9_entry)
@@ -50,15 +77,6 @@ def main() -> int:
         put_u32(header, code.ARM9_OVT_SIZE, ovt_size)
         put_u32(header, code.ARM7_OVT_ROM_OFFSET, 0)
         put_u32(header, code.ARM7_OVT_SIZE, 0)
-
-        overlay0_ram = 0x02001000
-        overlay0 = struct.pack("<I", overlay0_ram + 9) + b"hello\x00ABCDEF"
-        assert len(overlay0) == 16
-        overlay1_ram = 0x02001008
-        overlay1 = b"COMPRESSED!!"
-        assert len(overlay1) == 12
-        overlay_region = overlay0 + overlay1
-        assert overlay_data_start + len(overlay_region) == arm7_rom
 
         fat = struct.pack(
             "<IIII",
@@ -87,7 +105,7 @@ def main() -> int:
                 "<8I",
                 1,
                 overlay1_ram,
-                32,
+                len(overlay1_decoded),
                 4,
                 overlay1_ram,
                 overlay1_ram,
@@ -106,17 +124,19 @@ def main() -> int:
         summary = code.analyze(root, output)
         assert summary["arm9_overlay_count"] == 2
         assert summary["compressed_arm9_overlays"] == 1
-        assert summary["uncompressed_arm9_overlays"] == 1
+        assert summary["decoded_arm9_overlays"] == 2
         assert summary["overlay_static_initializer_entries"] == 1
         assert summary["overlay_ram_overlap_groups"] == [[0, 1]]
-        assert summary["ghidra_importable_programs"] == 3  # ARM9, ARM7, uncompressed overlay 0.
+        assert summary["ghidra_importable_programs"] == 4
 
         rows = list(csv.DictReader((output / "overlays.csv").open(encoding="utf-8")))
         assert len(rows) == 2
         assert rows[0]["overlay_id"] == "0"
         assert rows[0]["compressed"] == "False"
         assert rows[0]["static_initializer_count"] == "1"
+        assert rows[0]["decoded_size"] == "16"
         assert rows[1]["compressed"] == "True"
+        assert rows[1]["decoded_size"] == "20"
         assert rows[1]["overlaps_overlay_ids"] == "0"
 
         inits = list(csv.DictReader((output / "static_initializers.csv").open(encoding="utf-8")))
@@ -128,21 +148,23 @@ def main() -> int:
         strings = list(csv.DictReader((output / "strings.csv").open(encoding="utf-8")))
         assert any(row["module"] == "arm9" and "hello" in row["text"] for row in strings)
         assert any(row["module"] == "overlay_000" and row["text"] == "hello" for row in strings)
-        assert not any(row["module"] == "overlay_001" for row in strings)
+        assert any(row["module"] == "overlay_001" and row["text"] == "A" * 20 for row in strings)
 
         ghidra = list(csv.DictReader((output / "ghidra_targets.csv").open(encoding="utf-8")))
         assert ghidra[0]["program"] == "arm9"
         assert ghidra[2]["program"] == "overlay_000"
         assert ghidra[2]["importable"] == "True"
         assert ghidra[3]["program"] == "overlay_001"
-        assert ghidra[3]["importable"] == "False"
+        assert ghidra[3]["importable"] == "True"
 
         assert (output / "executables/arm9.bin").read_bytes() == arm9
         assert (output / "executables/overlays/overlay_000.raw.bin").read_bytes() == overlay0
+        assert (output / "executables/overlays/overlay_001.bin").read_bytes() == overlay1_decoded
         parsed = json.loads((output / "summary.json").read_text(encoding="utf-8"))
         assert parsed["header"]["game_code"] == "TEST"
+        assert parsed["format"] == "pokengineering-nds-code-analysis-v2"
 
-    print("Nintendo DS executable memory-map synthetic test passed")
+    print("Nintendo DS executable memory-map and BLZ synthetic test passed")
     return 0
 
 
