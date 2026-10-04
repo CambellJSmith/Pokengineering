@@ -174,7 +174,7 @@ def build_parent_groups(resources: list[dict[str, Any]]) -> list[dict[str, Any]]
     return sorted(rows, key=lambda row: (-int(row["resource_count"]), str(row["parent_path"])))
 
 
-def build_same_parent_pairs(resources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def build_adjacent_pairs(resources: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for resource in resources:
         grouped[str(resource["parent_path"])].append(resource)
@@ -182,24 +182,23 @@ def build_same_parent_pairs(resources: list[dict[str, Any]]) -> list[dict[str, A
     rows: list[dict[str, Any]] = []
     for parent_path, members in sorted(grouped.items()):
         members.sort(key=lambda row: int(row["entry_index"]))
-        for left_position, left in enumerate(members):
-            for right in members[left_position + 1 :]:
-                if left["kind"] == right["kind"]:
-                    continue
-                rows.append(
-                    {
-                        "parent_path": parent_path,
-                        "left_path": left["logical_path"],
-                        "left_kind": left["kind"],
-                        "left_index": left["entry_index"],
-                        "right_path": right["logical_path"],
-                        "right_kind": right["kind"],
-                        "right_index": right["entry_index"],
-                        "index_distance": int(right["entry_index"]) - int(left["entry_index"]),
-                        "fact": "same_parent_container",
-                        "semantic_pairing_proven": False,
-                    }
-                )
+        for left, right in zip(members, members[1:]):
+            if int(right["entry_index"]) != int(left["entry_index"]) + 1:
+                continue
+            rows.append(
+                {
+                    "parent_path": parent_path,
+                    "left_path": left["logical_path"],
+                    "left_kind": left["kind"],
+                    "left_index": left["entry_index"],
+                    "right_path": right["logical_path"],
+                    "right_kind": right["kind"],
+                    "right_index": right["entry_index"],
+                    "index_distance": 1,
+                    "fact": "adjacent_graphics_slots",
+                    "semantic_pairing_proven": False,
+                }
+            )
     return rows
 
 
@@ -319,7 +318,7 @@ def build_graphics_catalog(
 
     resources.sort(key=lambda row: str(row["logical_path"]))
     parent_groups = build_parent_groups(resources)
-    same_parent_pairs = build_same_parent_pairs(resources)
+    adjacent_pairs = build_adjacent_pairs(resources)
     adjacent_runs = build_adjacent_runs(traversed, resources)
 
     write_csv(
@@ -333,8 +332,8 @@ def build_graphics_catalog(
         ["parent_path", "resource_count", "NCGR", "NCLR", "NSCR", "NCER", "NANR", "first_index", "last_index", "resource_paths"],
     )
     write_csv(
-        output_dir / "same_parent_pairs.csv",
-        same_parent_pairs,
+        output_dir / "adjacent_pairs.csv",
+        adjacent_pairs,
         ["parent_path", "left_path", "left_kind", "left_index", "right_path", "right_kind", "right_index", "index_distance", "fact", "semantic_pairing_proven"],
     )
     write_csv(
@@ -349,7 +348,7 @@ def build_graphics_catalog(
         "graphics_resources_exported": len(resources),
         "graphics_formats": dict(sorted(counts.items())),
         "parent_groups": len(parent_groups),
-        "same_parent_cross_format_pairs": len(same_parent_pairs),
+        "adjacent_graphics_pairs": len(adjacent_pairs),
         "adjacent_graphics_runs": len(adjacent_runs),
         "semantic_pairings_claimed": 0,
         "verification": {
@@ -365,7 +364,7 @@ def build_graphics_catalog(
     for kind in ("NCGR", "NCLR", "NSCR", "NCER", "NANR"):
         print(f"graphics {kind}: {counts[kind]}")
     print(f"parent groups: {summary['parent_groups']}")
-    print(f"same-parent cross-format pairs: {summary['same_parent_cross_format_pairs']}")
+    print(f"adjacent graphics pairs: {summary['adjacent_graphics_pairs']}")
     print(f"adjacent graphics runs: {summary['adjacent_graphics_runs']}")
     print("semantic pairings guessed: 0")
     print(f"graphics catalogue: {output_dir}")
