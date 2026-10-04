@@ -11,6 +11,8 @@ on:
       - "fat.bin"
       - "fat_data.bin"
       - "_file_IDs.txt"
+      - "docs/game_acf_inventory.md"
+      - "README.md"
       - ".github/workflows/game_acf_catalog.yml"
   workflow_dispatch:
 
