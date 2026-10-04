@@ -154,8 +154,8 @@ def main() -> int:
             raise SystemExit("graphics catalogue format counts are incorrect")
         if graphics_summary["parent_groups"] != 3 or graphics_summary["adjacent_graphics_runs"] != 3:
             raise SystemExit("graphics catalogue structural grouping counts are incorrect")
-        if graphics_summary["same_parent_cross_format_pairs"] != 1:
-            raise SystemExit("graphics catalogue same-parent pairing facts are incorrect")
+        if graphics_summary["adjacent_graphics_pairs"] != 1:
+            raise SystemExit("graphics catalogue adjacent-slot facts are incorrect")
         if graphics_summary["semantic_pairings_claimed"] != 0:
             raise SystemExit("graphics catalogue must not guess semantic pairings")
 
