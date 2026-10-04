@@ -7,7 +7,8 @@ temp_dir="$(mktemp -d)"
 trap 'rm -rf "$temp_dir"' EXIT
 
 python3 "$root_dir/tools/test_nitro_graphics_previews.py"
-python3 "$root_dir/tools/render_nitro_graphics.py" "$catalog_dir" "$temp_dir/previews" --metadata-only
+python3 "$root_dir/tools/test_guardian_graphics_variants.py"
+python3 "$root_dir/tools/render_guardian_graphics.py" "$catalog_dir" "$temp_dir/previews" --metadata-only
 
 python3 - "$catalog_dir" "$temp_dir/previews" <<'PY'
 import csv
@@ -26,6 +27,8 @@ with (preview_dir / "candidate_previews.csv").open("r", encoding="utf-8", newlin
     candidates = list(csv.DictReader(source))
 with (preview_dir / "unresolved.csv").open("r", encoding="utf-8", newline="") as source:
     unresolved = list(csv.DictReader(source))
+with (preview_dir / "format_anomalies.csv").open("r", encoding="utf-8", newline="") as source:
+    anomalies = list(csv.DictReader(source))
 summary = json.loads((preview_dir / "summary.json").read_text(encoding="utf-8"))
 
 if summary["resources_inspected"] != len(resources) or len(inspections) != len(resources):
@@ -55,13 +58,18 @@ if len(candidates) != summary["candidate_rows"]:
     raise SystemExit("candidate preview summary count is inconsistent")
 if len(unresolved) != summary["unresolved_rows"]:
     raise SystemExit("unresolved preview summary count is inconsistent")
+if len(anomalies) != summary["format_anomalies"]:
+    raise SystemExit("format anomaly ledger count is inconsistent")
 if any(row["semantic_pairing_proven"].lower() != "false" for row in candidates):
     raise SystemExit("candidate preview was incorrectly marked as a proven semantic pairing")
 if not candidates:
     raise SystemExit("renderer found no structurally valid candidate previews")
+if not anomalies:
+    raise SystemExit("retail Guardian Signs compatibility anomalies were not recorded")
 
 print(f"retail Nitro resources parsed: {len(resources)}")
 print(f"structurally valid candidate previews: {len(candidates)}")
 print(f"explicit unresolved candidate records: {len(unresolved)}")
+print(f"recorded retail format anomalies: {len(anomalies)}")
 print("Guardian Signs Nitro graphics metadata validation passed")
 PY
