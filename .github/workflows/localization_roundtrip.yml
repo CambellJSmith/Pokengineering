@@ -1,0 +1,27 @@
+name: Localization Roundtrip
+
+on:
+  pull_request:
+    paths:
+      - "tools/**"
+      - "fat_data.bin"
+      - "fat.bin"
+      - "_file_IDs.txt"
+      - ".github/workflows/localization_roundtrip.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  localization_roundtrip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v7
+
+      - name: Build Guardian Signs Tools
+        run: bash tools/setup_guardian_tools.sh
+
+      - name: Verify Localization Roundtrip
+        run: bash tools/test_localization_roundtrip.sh
