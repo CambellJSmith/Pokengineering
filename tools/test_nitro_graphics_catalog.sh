@@ -8,7 +8,9 @@ trap 'rm -rf "$temp_dir"' EXIT
 
 python3 "$root_dir/tools/test_nitro_graphics_previews.py"
 python3 "$root_dir/tools/test_guardian_graphics_variants.py"
-python3 "$root_dir/tools/render_guardian_graphics.py" "$catalog_dir" "$temp_dir/previews" --metadata-only
+python3 "$root_dir/tools/test_guardian_preview_extents.py"
+python3 "$root_dir/tools/validate_guardian_ncgr_previews.py" "$catalog_dir"
+python3 "$root_dir/tools/render_guardian_graphics_safe.py" "$catalog_dir" "$temp_dir/previews" --metadata-only
 
 python3 - "$catalog_dir" "$temp_dir/previews" <<'PY'
 import csv
