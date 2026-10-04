@@ -5,6 +5,7 @@ on:
     paths:
       - "tools/catalog_game_acf.py"
       - "tools/inventory_recursive_containers.py"
+      - "tools/catalog_graphics_sets.py"
       - "tools/extract_game_data.sh"
       - "tools/test_game_acf_catalog.sh"
       - "tools/test_recursive_container_inventory.py"
