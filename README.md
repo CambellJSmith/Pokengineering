@@ -4,7 +4,7 @@ Reverse-engineering and modding research for *Pokémon Ranger: Guardian Signs*.
 
 ## Current Milestone
 
-The first supported workflow is a complete localization ACF/MES round trip for the US retail game:
+The project now has two connected round-trip workflows:
 
 ```text
 fat_data.bin + fat.bin + _file_IDs.txt
@@ -28,36 +28,65 @@ fat_data.bin + fat.bin + _file_IDs.txt
              acftool
                 ↓
  rebuilt_data_localize_us.acf
+                ↓
+       rebuild_nds.py
+                ↓
+  rebuilt FAT + DS header CRC
+                ↓
+ guardian_signs_modded.nds
 ```
 
-The originally unpacked files under `data/` are misaligned. The workflow therefore reconstructs the localization ACF directly from the raw FAT payload and validates its container signature before using it.
+The originally unpacked files under `data/` are misaligned. The tooling therefore reconstructs required files directly from the validated raw FAT payload. The complete extracted component set is sufficient to reconstruct the Nintendo DS image without committing a `.nds` file.
 
-Start with:
+## Quick Start
+
+Build the pinned Guardian Signs ACF/MES tools and extract localization text:
 
 ```bash
 bash tools/setup_guardian_tools.sh
 bash tools/extract_localization.sh
 ```
 
-If you already have a correctly extracted `data_localize_us.acf`, pass it explicitly:
+Edit files under:
 
-```bash
-bash tools/extract_localization.sh /path/to/data_localize_us.acf
+```text
+work/localization/json/
 ```
 
-After editing files under `work/localization/json/`, rebuild with:
+Then rebuild the localization archive and Nintendo DS image:
 
 ```bash
 bash tools/rebuild_localization.sh
+bash tools/build_modded_rom.sh
 ```
 
-Run the automated extraction/edit/rebuild/re-extraction verification with:
+The validated full-capacity output is written to:
+
+```text
+work/guardian_signs_modded.nds
+```
+
+For a trimmed emulator-oriented image:
+
+```bash
+bash tools/build_modded_rom.sh work/localization work/guardian_signs_modded.nds --trim
+```
+
+## Tests
+
+Verify the localization ACF/MES round trip:
 
 ```bash
 bash tools/test_localization_roundtrip.sh
 ```
 
-See [`docs/localization_workflow.md`](docs/localization_workflow.md) for the complete workflow, output layout, repository hygiene rules, and the next reverse-engineering milestone.
+Verify baseline Nintendo DS reconstruction plus a size-changing NitroFS reinjection:
+
+```bash
+bash tools/test_rom_rebuild.sh
+```
+
+See [`docs/localization_workflow.md`](docs/localization_workflow.md) for text editing and [`docs/rom_rebuild_workflow.md`](docs/rom_rebuild_workflow.md) for ROM reconstruction, FAT shifting, validation, and emulator smoke-testing guidance.
 
 ## Repository Policy
 

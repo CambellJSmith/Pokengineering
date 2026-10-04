@@ -1,0 +1,35 @@
+name: ROM Rebuild
+
+on:
+  pull_request:
+    paths:
+      - "tools/rebuild_nds.py"
+      - "tools/validate_nds.py"
+      - "tools/build_modded_rom.sh"
+      - "tools/test_rom_rebuild.sh"
+      - "tools/extract_nitrofs_file.py"
+      - "header.bin"
+      - "arm9.bin"
+      - "arm7.bin"
+      - "a9ovr.bin"
+      - "a9ovr_data.bin"
+      - "fnt.bin"
+      - "fat.bin"
+      - "fat_data.bin"
+      - "itl.bin"
+      - "_file_IDs.txt"
+      - ".github/workflows/rom_rebuild.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rom_rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v7
+
+      - name: Verify Nintendo DS Rebuild
+        run: bash tools/test_rom_rebuild.sh
