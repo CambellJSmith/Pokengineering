@@ -5,6 +5,7 @@ on:
     paths:
       - "tools/analyze_nds_code.py"
       - "tools/analyze_game_code.sh"
+      - "tools/blz.py"
       - "tools/test_analyze_nds_code.py"
       - "docs/code_reverse_engineering.md"
       - "header.bin"
