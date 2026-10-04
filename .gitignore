@@ -1,0 +1,13 @@
+# Local reverse-engineering workspace and generated outputs
+/work/
+/generated/
+/third_party/
+/tools/bin/
+
+# User-supplied ROM images and rebuilt archives
+*.nds
+*.acf
+
+# Python cache
+__pycache__/
+*.pyc
