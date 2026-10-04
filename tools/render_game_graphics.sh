@@ -4,7 +4,7 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 catalog_dir="${1:-$root_dir/work/game_acf/graphics_catalog}"
 output_dir="${2:-$root_dir/work/game_acf/graphics_previews}"
-renderer="$root_dir/tools/render_guardian_graphics.py"
+renderer="$root_dir/tools/render_guardian_graphics_safe.py"
 
 [[ -f "$renderer" ]] || { printf 'missing renderer: %s\n' "$renderer" >&2; exit 1; }
 [[ -f "$catalog_dir/resources.csv" ]] || { printf 'missing graphics catalogue: %s\n' "$catalog_dir/resources.csv" >&2; exit 1; }
