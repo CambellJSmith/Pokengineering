@@ -198,6 +198,22 @@ def parse_narc(data: bytes) -> list[ContainerEntry]:
     return entries
 
 
+def plausible_lz10_header(data: bytes) -> bool:
+    if len(data) < 4 or data[0] != 0x10:
+        return False
+    output_size = int.from_bytes(data[1:4], "little")
+    header_size = 4
+    if output_size == 0:
+        if len(data) < 8:
+            return False
+        output_size = int.from_bytes(data[4:8], "little")
+        header_size = 8
+    if output_size <= 0:
+        return False
+    maximum_literal_size = header_size + output_size + ((output_size + 7) // 8) + 4
+    return len(data) <= maximum_literal_size or output_size >= len(data) - header_size
+
+
 def inspect_payload(data: bytes) -> PayloadInspection:
     detected_format, magic_offset = identify_format(data)
     decoded_format = ""
@@ -205,7 +221,7 @@ def inspect_payload(data: bytes) -> PayloadInspection:
     decoded_data: bytes | None = None
     decode_error = ""
 
-    if detected_format == "Nintendo LZ10":
+    if detected_format == "Nintendo LZ10" or plausible_lz10_header(data):
         try:
             decoded_data = decompress_lz10(data)
         except ContainerFormatError as error:
@@ -213,6 +229,8 @@ def inspect_payload(data: bytes) -> PayloadInspection:
         else:
             decoded_size = len(decoded_data)
             decoded_format, _ = identify_format(decoded_data)
+            detected_format = "Nintendo LZ10"
+            magic_offset = 0
 
     candidate = decoded_data if decoded_data is not None else data
     if candidate.startswith(ACF_MAGIC):
