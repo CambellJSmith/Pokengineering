@@ -6,15 +6,21 @@ on:
       - "tools/catalog_game_acf.py"
       - "tools/inventory_recursive_containers.py"
       - "tools/catalog_graphics_sets.py"
+      - "tools/render_nitro_graphics.py"
+      - "tools/render_game_graphics.sh"
       - "tools/extract_game_data.sh"
       - "tools/test_game_acf_catalog.sh"
       - "tools/test_recursive_container_inventory.py"
+      - "tools/test_nitro_graphics_previews.py"
+      - "tools/test_nitro_graphics_catalog.sh"
       - "tools/extract_nitrofs_file.py"
       - "tools/setup_guardian_tools.sh"
       - "fat.bin"
       - "fat_data.bin"
       - "_file_IDs.txt"
+      - "work/game_acf/graphics_catalog/**"
       - "docs/game_acf_inventory.md"
+      - "docs/nitro_graphics_previews.md"
       - "README.md"
       - ".github/workflows/game_acf_catalog.yml"
   workflow_dispatch:
@@ -31,3 +37,6 @@ jobs:
 
       - name: Verify Game ACF Catalogue
         run: bash tools/test_game_acf_catalog.sh
+
+      - name: Verify Nitro Graphics Previews
+        run: bash tools/test_nitro_graphics_catalog.sh
