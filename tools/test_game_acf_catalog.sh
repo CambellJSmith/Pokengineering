@@ -32,7 +32,7 @@ recursive_summary_path = analysis_dir / "recursive_summary.json"
 graphics_resources_path = graphics_dir / "resources.csv"
 graphics_summary_path = graphics_dir / "summary.json"
 graphics_parent_groups_path = graphics_dir / "parent_groups.csv"
-graphics_pairs_path = graphics_dir / "same_parent_pairs.csv"
+graphics_pairs_path = graphics_dir / "adjacent_pairs.csv"
 graphics_runs_path = graphics_dir / "adjacent_runs.csv"
 
 if source_acf.read_bytes()[:4] != b"acf\0":
@@ -181,12 +181,15 @@ for row in graphics_rows:
 
 if graphics_summary["parent_groups"] != len(graphics_parent_groups):
     raise SystemExit("graphics parent-group summary count is wrong")
-if graphics_summary["same_parent_cross_format_pairs"] != len(graphics_pairs):
-    raise SystemExit("graphics same-parent pair summary count is wrong")
+if graphics_summary["adjacent_graphics_pairs"] != len(graphics_pairs):
+    raise SystemExit("graphics adjacent-pair summary count is wrong")
 if graphics_summary["adjacent_graphics_runs"] != len(graphics_runs):
     raise SystemExit("graphics adjacent-run summary count is wrong")
 if any(row["semantic_pairing_proven"].lower() != "false" for row in graphics_pairs + graphics_runs):
     raise SystemExit("a structural graphics relationship was incorrectly marked semantic")
+for row in graphics_pairs:
+    if int(row["right_index"]) != int(row["left_index"]) + 1:
+        raise SystemExit("graphics adjacent-pair report contains non-adjacent slots")
 
 print(f"game ACF entries: {summary['archive_entries']} total, {real_entries} real")
 print(f"game ACF bytes: {summary['total_real_bytes']}")
@@ -205,7 +208,7 @@ print(f"graphics resources: {len(graphics_rows)}")
 for kind in ("NCGR", "NCLR", "NSCR", "NCER", "NANR"):
     print(f"graphics format {kind}: {graphics_counts[kind]}")
 print(f"graphics parent groups: {len(graphics_parent_groups)}")
-print(f"graphics same-parent cross-format pairs: {len(graphics_pairs)}")
+print(f"graphics adjacent pairs: {len(graphics_pairs)}")
 print(f"graphics adjacent runs: {len(graphics_runs)}")
 print("Guardian Signs game ACF recursive inventory and graphics catalogue test passed")
 PY
