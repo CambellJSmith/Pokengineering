@@ -2,36 +2,20 @@
 
 Reverse-engineering and modding research for **Pokémon Ranger: Guardian Signs** (Nintendo DS, US build, game code `B3RE`).
 
-> **End goal:** identify the trigger and launch path for every capture in the game, then expose every capture through a new **Capture Select** option on the main menu.
+> **End goal:** identify every capture trigger/definition in the game, then expose every capture through a new **Capture Select** option on the main menu.
 
-This README is a **project handoff document**. It is deliberately detailed enough that the local repository and chat history can be deleted and the work resumed later from GitHub.
+This README is the canonical project handoff. It is intentionally detailed enough that the local checkout and chat history can be deleted and work can resume later from GitHub alone.
 
----
+## Canonical recovery point
 
-## Resume point / branch
-
-Latest handoff work as of **2026-10-04**:
-
-```text
-branch: research/full-capture-handoff
-```
-
-It supersedes the older documentation branch/PR:
-
-```text
-docs/capture-research-readme
-PR #14
-```
-
-If the handoff branch has not been merged yet:
+As of **2026-10-04**, the latest handoff is merged to **`main`** via PR **#16**. The older documentation-only PR #14 was closed as superseded.
 
 ```bash
 git clone https://github.com/CambellJSmith/Pokengineering.git
 cd Pokengineering
-git switch research/full-capture-handoff
 ```
 
-Tracked recovery-critical additions on this branch:
+Recovery-critical files now tracked on `main`:
 
 ```text
 tools/build_debug_rom.sh
@@ -40,32 +24,36 @@ tools/analyze_capture_scripts.py
 research/capture/capture_candidates_2026-10-04.csv
 ```
 
-Generated files under `work/` and rebuilt `.nds` / `.acf` files are intentionally ignored because they can be regenerated from the tracked ROM components.
+The exact stopping point is:
+
+> **The scripted `CSkyCaptureBeforeState` path is mapped and bulk-swept. The next unresolved bridge is ordinary overworld encounter → normal capture launcher → `CCaptureScene`.**
+
+Do **not** restart from species-ID searches or from `1C10`; those paths are already understood as described below.
 
 ---
 
-# 1. Status at a glance
+## 1. Major completed milestones
 
-Completed:
+1. Reproducible Nintendo DS reconstruction from tracked extracted components.
+2. ROM validation including DS header CRC, FAT and overlay entries.
+3. US localization extraction/edit/rebuild workflow.
+4. Recursive `data_game_us.acf` / ACF / NARC / LZ10 inventory.
+5. Nitro 2D graphics rendering for NCGR/NCLR/NSCR/NCER/NANR.
+6. Lossless NCER/NCGR sprite edit round-trip.
+7. End-to-end graphics-mod rebuild into a working NDS.
+8. Automatic graphics identification/cataloguing.
+9. ARM9 / ARM7 / all 34 ARM9 overlay mapping and BLZ decompression.
+10. Dynamic Spearow capture tracing in DeSmuME + GDB.
+11. Script VM instruction format and game-command dispatcher substantially decoded.
+12. Exact Spearow script stream found in the canonical raw game ACF.
+13. **Proven state bridge:** `1C10 -> state 3 -> CSkyCaptureBeforeState -> LoadCapturePokemon`.
+14. Whole raw-ACF sweep: **1,695 script streams, 20 state-3 capture transitions in 16 streams**.
+15. Separate ordinary-capture class family identified: `CCaptureScene`, `CCaptureContext`, `CCapturePokemon`, etc.
 
-1. Validated NDS reconstruction from extracted ROM components.
-2. Localization extraction/edit/rebuild.
-3. Recursive `data_game_us.acf` / NARC / LZ10 resource inventory.
-4. Nitro 2D graphics rendering and lossless NCER/NCGR edit round-trip.
-5. End-to-end graphics mod rebuild into a working NDS.
-6. ARM9 / ARM7 / all 34 ARM9 overlay mapping and BLZ decompression.
-7. Live DeSmuME/GDB tracing of the introductory Spearow capture.
-8. Script VM instruction format and command dispatcher substantially decoded.
-9. Exact Spearow script stream found statically in the raw game ACF.
-10. **Proven bridge:** `1C10 -> state 3 -> CSkyCaptureBeforeState -> LoadCapturePokemon`.
-11. Whole raw ACF script sweep: **1,695 script streams, 20 state-3 capture transitions in 16 streams**.
-12. A separate ordinary-capture class family (`CCaptureScene`, `CCaptureContext`, etc.) identified.
-13. Current pivot: find the **ordinary overworld capture launcher** rather than looking for more `1C10` calls.
-
-Current architecture:
+Current high-level architecture:
 
 ```text
-SCRIPTED / CSkyCaptureBeforeState PATH
+SCRIPTED / SKY-CAPTURE PATH
 script
   ↓
 1C12 / 1C54 setup
@@ -94,13 +82,12 @@ The 20 `1C10` sites are **not** assumed to be every capture in the game.
 
 ---
 
-# 2. Capture Select design rule
+## 2. Capture Select design rule
 
-Keep these concepts separate:
+Keep these separate:
 
-**Capture definition:** species/form, model/resources, difficulty/HP/behaviour, boss flags, arena, attack/skill data, etc.
-
-**Capture trigger:** story script, map actor, mission, cutscene, tutorial, collision, boss phase, etc.
+- **Capture definition:** species/form, model/resources, difficulty/HP/behaviour, boss flags, arena, attack/skill data, etc.
+- **Capture trigger:** story script, map actor, mission, cutscene, tutorial, collision, boss phase, etc.
 
 The same definition may have multiple triggers.
 
@@ -121,13 +108,13 @@ return_destination
 notes
 ```
 
-The final menu should call the **highest safe launcher/dispatcher** that reproduces normal setup rather than blindly jumping into the low-level minigame.
+The final menu should call the **highest safe launcher/dispatcher** that reproduces normal setup rather than blindly jumping into the low-level capture minigame.
 
 ---
 
-# 3. Fresh-clone rebuild
+## 3. Fresh-clone ROM rebuild
 
-Repository components include:
+Tracked reconstruction inputs include:
 
 ```text
 arm9.bin
@@ -140,76 +127,51 @@ header.bin
 _file_IDs.txt
 ```
 
-Build and validate:
+Build + validate:
 
 ```bash
 bash tools/build_debug_rom.sh
 ```
 
-Equivalent:
-
-```bash
-mkdir -p work/debug
-
-python3 tools/rebuild_nds.py \
-  --components . \
-  --output work/debug/guardian_signs_debug.nds \
-  --trim
-
-python3 tools/validate_nds.py \
-  work/debug/guardian_signs_debug.nds \
-  --components .
-```
-
-Previously validated:
+Output:
 
 ```text
-debug ROM size: 104,938,556 bytes
-header CRC: 0x50C9
-ARM9 overlay FAT entries: 34
-NitroFS entries validated: 386
+work/debug/guardian_signs_debug.nds
 ```
+
+Previously validated values:
+
+```text
+debug ROM size:          104,938,556 bytes
+header CRC:              0x50C9
+ARM9 overlay FAT entries: 34
+NitroFS entries:          386
+```
+
+`.nds` files are intentionally not tracked because they can be regenerated.
 
 ---
 
-# 4. Critical ACF trap
+## 4. Critical raw-ACF trap
 
-`data/data_game_us.acf` is NitroFS/FAT file ID `0x22`.
+`data/data_game_us.acf` is NitroFS/FAT file ID **`0x22`**.
 
-A local same-sized file named `data/data_game_us.acf` turned out **not to be byte-identical to the raw NitroFS ACF**.
-
-Both were:
-
-```text
-0x177BAD4 bytes = 24,623,828
-```
-
-but at the known Spearow stream:
+A same-sized local `data/data_game_us.acf` was found to be byte-different from the canonical raw NitroFS file. Both were `0x177BAD4` bytes, but at the known Spearow stream:
 
 ```text
 ACF +0xF844C
+wrong representation: 97 e8 00 ce ...
+canonical raw ACF:     10 b1 27 00 ...
 ```
 
-the wrong representation had:
-
-```text
-97 e8 00 ce ...
-```
-
-while the canonical raw file had:
-
-```text
-10 b1 27 00 ...
-```
-
-Wrong-file sweep result:
+Scanning the wrong representation produced the false result:
 
 ```text
 script-like streams : 280
 capture transitions : 0
 ```
 
-Canonical raw-file result:
+Canonical raw result:
 
 ```text
 script-like streams : 1695
@@ -217,37 +179,36 @@ capture transitions : 20
 setup-only scripts  : 0
 ```
 
-Extract canonical raw ACF:
-
-```bash
-mkdir -p work/capture
-
-python3 tools/extract_nitrofs_file.py \
-  fat_data.bin fat.bin _file_IDs.txt \
-  data/data_game_us.acf \
-  work/capture/data_game_us.raw.acf
-```
-
-Known values:
+Canonical raw-AFC facts:
 
 ```text
 fat_data base: 0x00164C00
-file ID:       0x22
+FAT file ID:   0x22
 raw ACF size:  0x177BAD4
+Spearow ACF:   +0xF844C
+Spearow header: 10 b1 27 00
 ```
 
-Known Spearow bytes:
+`tools/analyze_capture_scripts.py` now defaults to reconstructing FAT ID `0x22` directly from `fat_data.bin` and validates the Spearow signature before scanning. Do not bypass this check without a reason.
+
+Run:
+
+```bash
+python3 tools/analyze_capture_scripts.py
+```
+
+Expected headline:
 
 ```text
-ACF +0xF844C:
-10 b1 27 00 00 20 00 00 00 38 27 00 00 60 80 40
+Known Spearow signature verified at +0xF844C.
+script-like streams : 1695
+capture transitions : 20
+setup-only scripts  : 0
 ```
-
-`tools/analyze_capture_scripts.py` now defaults to extracting raw FAT ID `0x22` directly from `fat_data.bin` and validates this signature before scanning.
 
 ---
 
-# 5. Executable map
+## 5. Executable / overlay map
 
 ARM9:
 
@@ -262,8 +223,8 @@ SHA-256: 4171ab911318eda40020c8643ff07b56bec55ad393bc81a8236adf949fc38ff6
 ARM7:
 
 ```text
-RAM/entry: 0x02380000
-size:      162,308 bytes
+RAM / entry: 0x02380000
+size:        162,308 bytes
 ```
 
 ARM9 overlays:
@@ -271,7 +232,7 @@ ARM9 overlays:
 ```text
 34 total
 34/34 compressed in retail
-34/34 successfully decoded
+34/34 successfully BLZ-decoded
 ```
 
 Capture-heavy overlay 3:
@@ -284,23 +245,23 @@ BSS:          36,064 = 0x8CE0
 init entries: 44
 ```
 
-Run static executable analysis:
+Run:
 
 ```bash
 bash tools/analyze_game_code.sh
 ```
 
-Decoded overlay files in `work/code_analysis/executables/overlays/` are analysis copies. A decoded edit does **not** yet automatically BLZ-recompress/repack into the ROM.
+Decoded overlays under `work/code_analysis/executables/overlays/` are analysis copies. Editing them does **not** yet BLZ-recompress/repack into the ROM; an overlay edit pipeline is still required later.
 
 ---
 
-# 6. Early Spearow false leads
+## 6. Spearow trace: important false leads already ruled out
 
-Trace target: introductory **Spearow**, National Dex `21 / 0x0015`.
+Intro target: **Spearow**, National Dex `21 / 0x0015`.
 
-### `0x0222F104`
+### `0x0222F104` is display identity only
 
-Changing writes of `21` to `396` (Starly) produced:
+Changing writes of `21` to `396` (Starly) caused:
 
 ```text
 displayed name/text: Starly
@@ -308,121 +269,46 @@ model:               Spearow
 behaviour/fight:     Spearow
 ```
 
-So `0x0222F104` is a UI/display identity field, **not** the actual encounter selector.
+Therefore `0x0222F104` is not the actual encounter selector. Writer observed at `0x02018648`.
 
-Writer:
+### `0x0222D1A8` is a species-table entry, not the story encounter
 
-```text
-0x02018648
-```
+The Spearow record was immediately followed by Fearow (`22`), consistent with a sequential global species table.
 
-### Sequential species record
+### `0x0201A5F8` / `0x02016C84` path is generic species processing
 
-Spearow record was observed at:
+Overlay 3 around `0x020D71D8` applies the same helper to a sequence such as `23, 22, 21, 20, 19, ...`; the hard-coded `21` there is not the unique intro trigger.
 
-```text
-0x0222D1A8
-```
+### Other rejected paths / assumptions
 
-and immediately followed by Fearow (`22`), so this is a global species-definition table, not the intro encounter definition.
-
-### Generic species processing
-
-Lookup helper:
+Do not restart from:
 
 ```text
-0x0201A5F8
+0x0201A264                  generic species/resource parser
+0x02012DA8 / 0x02012DB8    generic pool manager
+0x021007A8                  battle-loop helper
+0x020D40CC                  predicate
+0x4C                        not capture ID
+0x02041F5C                  generic accessor
+0x02022754                  generic array getter
+13                          lookup index, not capture/species ID
+1C30 / 1C35 / 1C36 alone   not launchers
+raw search for 0x1C54      invalid for compressed script discovery
 ```
 
-caller helper:
-
-```text
-0x02016C84
-```
-
-overlay-3 code around `0x020D71D8` processes a sequence:
-
-```text
-23, 22, 21, 20, 19, ...
-```
-
-so the hard-coded `21` there is also **not** the unique Spearow trigger.
-
-Do not repeat these paths.
+State `3` is **not unknown**; it is confirmed `CSkyCaptureBeforeState`.
 
 ---
 
-# 7. Runtime ARM9 note
+## 7. Runtime ARM9 note
 
-Several live ARM9 addresses did not match useful disassembly from stored `arm9.bin`.
+Some live ARM9 code did not usefully match the stored `arm9.bin` representation. Runtime ARM9 was therefore dumped from RAM and disassembled separately.
 
-Runtime ARM9 was extracted from RAM:
-
-```bash
-dd if=/tmp/starly_full_during.bin \
-   of=work/code_analysis/runtime/arm9_runtime.bin \
-   bs=1 count=421012 status=none
-```
-
-Disassemble with:
-
-```bash
-arm-none-eabi-objdump \
-  -D -b binary -m arm \
-  --adjust-vma=0x02000000 \
-  work/code_analysis/runtime/arm9_runtime.bin
-```
-
-Do not assume arbitrary live ARM9 patches map directly to the same stored-file offset until the representation difference is understood.
+Do not assume arbitrary live ARM9 patches map directly to the same stored-file offset until that representation difference is understood.
 
 ---
 
-# 8. Capture setup functions
-
-Important overlay-3 functions:
-
-```text
-0x02116774  capture-before record writer
-0x02117258  LoadCapturePokemon
-0x02117388  unique capture-load entry helper
-```
-
-Known `CSkyCaptureBeforeState` method:
-
-```text
-0x02106744
-```
-
-calls `LoadCapturePokemon` near:
-
-```text
-0x02106AB8
-```
-
-Observed Spearow load context:
-
-```text
-count = 1
-entry = { 0x6BF, 0xFFFFFFFF, 0x4C }
-```
-
-`0x4C` is a hard-coded parameter, **not a capture ID**.
-
-The `0x6BF` value was derived from lookup index `13`; therefore `13` is **not** the species/capture ID either.
-
-Direct static callers of `0x02116774`:
-
-```text
-0x021026F8
-0x0210360C
-0x02111C24
-```
-
-Spearow dynamically used `0x0210360C`.
-
----
-
-# 9. Script VM
+## 8. Script VM facts
 
 Interpreter:
 
@@ -436,7 +322,7 @@ Game-command dispatcher:
 0x02065E14
 ```
 
-Interpreter state via `r9`:
+VM state via `r9`:
 
 ```text
 +0x00 instruction pointer
@@ -457,14 +343,14 @@ byte1   subtype / argc / flags
 upper16 signed operand
 ```
 
-Known opcodes:
+Known opcode semantics:
 
 ```text
 0x01 game command call
 0x02 wait/yield family
 0x08 branch family
 0x10 PUSH_S16
-0x11 PUSH_U32 (consumes following dword)
+0x11 PUSH_U32 (consumes next dword)
 0x12 PUSH_LAST_RESULT
 0x14 ALU
 0x16 comparison
@@ -476,16 +362,11 @@ Opcode `0x04` also consumes an additional dword.
 Selector split:
 
 ```c
-group = (selector >> 10) & 0x3F;
-index = selector & 0x3FF;
+group = (selector >> 10) & 0x3f;
+index = selector & 0x3ff;
 ```
 
-For `0x1C54`:
-
-```text
-group 7
-index 0x54
-```
+Example: `0x1C54` = group 7, index `0x54`.
 
 Because the value stack grows downward:
 
@@ -496,36 +377,26 @@ PUSH 8
 CALL 1C54 argc=3
 ```
 
-calls the handler as:
+passes handler arguments `(8, 13, 0)`.
 
-```text
-(8, 13, 0)
-```
-
-`tools/decode_script_vm.py` preserves this current decoder.
+`tools/decode_script_vm.py` preserves the current decoder.
 
 ---
 
-# 10. Static Spearow script bridge
+## 9. Exact Spearow script stream
 
-Canonical raw locations:
+Canonical locations:
 
 ```text
 ACF offset:      0x000F844C
 ROM offset:      0x0136F24C
 fat_data offset: 0x0120A64C
 LZ10 header:     10 b1 27 00
-compressed:      0xC48
+compressed size: 0xC48
 decoded size:    0x27B1
 ```
 
-Known selector:
-
-```text
-decoded +0xFB0 = CALL 0x1C54
-```
-
-Critical sequence:
+Critical decoded sequence:
 
 ```text
 +0x0FA4 PUSH 0
@@ -549,9 +420,9 @@ Critical sequence:
 
 ---
 
-# 11. Group-7 capture-related commands
+## 10. Group-7 capture-related commands
 
-Table area:
+Command table area:
 
 ```text
 0x0211C9C8
@@ -569,16 +440,16 @@ Mappings:
 1C54 -> 0x0210360C
 ```
 
-Facts:
+Current semantics:
 
-- `1C12` / `1C54` call capture-before record setup paths.
-- `1C30` is configuration.
-- `1C35` writes capture-manager configuration.
-- `1C36` performs associated async/state work and is **not capture-specific by itself**.
-- `1C10` requests state `3`.
-- `1C11` returns whether pending state is still `3`.
+- `1C12` / `1C54`: capture-before record setup paths.
+- `1C30`: configuration setter.
+- `1C35`: capture-manager configuration.
+- `1C36`: associated async/state work; not capture-specific alone.
+- `1C10`: request pending state ID `3`.
+- `1C11`: test whether pending state is still `3`.
 
-Exact:
+Exact core behaviour:
 
 ```c
 1C10() {
@@ -593,177 +464,159 @@ Exact:
 
 ---
 
-# 12. Proven state-3 bridge
+## 11. Proven state-3 bridge
 
-Live proof:
-
-```text
-[0x02123148] = 0x02123158        state manager
-[0x02123158] = 0x0211C94C       manager vptr
-[0x0211C964] = 0x021018E4       vfunc +0x18 = state resolver
-```
-
-Resolver `0x021018E4` switch case `3` loads:
+Live observations:
 
 ```text
-singleton = 0x021255CC
+[0x02123148] = 0x02123158   live state manager
+[0x02123158] = 0x0211C94C   manager vptr
+[0x0211C964] = 0x021018E4   vfunc +0x18 = state resolver
 ```
 
-and:
+Resolver `0x021018E4`, case `3`, returns singleton:
 
 ```text
-[0x021255CC] = 0x0211CEDC
+0x021255CC
 ```
 
-Static RTTI identifies the live address point `0x0211CEDC` as:
+whose live vptr is:
+
+```text
+0x0211CEDC
+```
+
+Static RTTI identifies that address point as:
 
 ```text
 22CSkyCaptureBeforeState
 ```
 
-Its table includes method:
-
-```text
-0x02106744
-```
-
-which reaches:
+Its table includes method `0x02106744`, which reaches:
 
 ```text
 0x02117258 LoadCapturePokemon
 ```
 
-Therefore:
+Therefore this bridge is proven and does not need more GDB confirmation:
 
 ```text
 script
- ↓
+  ↓
 1C12 / 1C54 setup
- ↓
+  ↓
+1C35/config as applicable
+  ↓
 1C10
- ↓
+  ↓
 manager +0xE44 = 3
- ↓
+  ↓
 state resolver 0x021018E4
- ↓
-state 3 singleton 0x021255CC
- ↓
-vptr 0x0211CEDC
- ↓
-CSkyCaptureBeforeState
- ↓
+  ↓
+state-3 singleton 0x021255CC
+  ↓
+CSkyCaptureBeforeState vptr 0x0211CEDC
+  ↓
 0x02106744
- ↓
+  ↓
 LoadCapturePokemon 0x02117258
- ↓
+  ↓
 capture gameplay
 ```
 
-**Do not spend another session re-proving this.**
+---
+
+## 12. Capture-before / load functions
+
+Important overlay-3 functions:
+
+```text
+0x02116774  capture-before record writer
+0x02117258  LoadCapturePokemon
+0x02117388  unique capture-load entry helper
+```
+
+Known `CSkyCaptureBeforeState` method:
+
+```text
+0x02106744
+```
+
+which calls `LoadCapturePokemon` near `0x02106AB8`.
+
+Observed Spearow capture-load context:
+
+```text
+count = 1
+entry = { 0x6BF, 0xFFFFFFFF, 0x4C }
+```
+
+`0x4C` is a hard-coded parameter, not a capture ID. The `0x6BF` value was derived from lookup index `13`; `13` is also not a capture/species ID.
+
+Direct static callers of `0x02116774`:
+
+```text
+0x021026F8
+0x0210360C
+0x02111C24
+```
+
+Spearow dynamically used `0x0210360C` (`1C54`).
 
 ---
 
-# 13. Whole raw-ACF capture sweep
+## 13. Whole-game scripted capture sweep
 
-Run:
+`tools/analyze_capture_scripts.py` performs aligned VM decoding across embedded LZ10 script streams in the canonical raw ACF.
 
-```bash
-python3 tools/analyze_capture_scripts.py
-```
-
-Expected:
+Validated result:
 
 ```text
-script-like streams : 1695
-capture transitions : 20
-setup-only scripts  : 0
+script streams:        1695
+scripts with 1C10:       16
+capture transitions:     20
+setup-only scripts:       0
 ```
 
-The 20 transitions are in **16 streams**.
-
-Split:
+Of the 20 launch transitions:
 
 ```text
-1C54-based: 11
-1C12-based:  9
+11 use 1C54-style setup
+ 9 use 1C12-style setup
+19 were scored complete
+ 1 was scored high-confidence
+all 20 have the 1C11 pending-state wait loop
 ```
 
-Multiple launches in one stream:
+Some scripts contain multiple launches:
 
 ```text
-script 1301: 3
-script 1304: 2
-script 1311: 2
+script #1301: 3
+script #1304: 2
+script #1311: 2
 ```
 
-Duplicate setup example:
+The same configuration can occur at multiple trigger sites, so these are **trigger sites**, not necessarily unique capture definitions.
 
-```text
-script 1326: 1C54(3,0x1A9,0), 1C35(0xA,6)
-script 1328: 1C54(3,0x1A9,0), 1C35(0xA,6)
-```
-
-So **20 trigger sites do not imply 20 unique capture definitions**.
-
-| # | Script | ACF stream | Launch | Form | Setup args | 1C35 | 1C36 | Confidence |
-|---:|---:|---:|---:|---|---|---|---|---|
-| 1 | 1300 | `0xF844C` | `+0xFC0` | `1C54` | `8, 0xD, 0` | `(2, 0)` | `(0x538)` | complete (100) |
-| 2 | 1301 | `0xF9094` | `+0xAE8` | `1C12` | `0x63, 0, 3, 0x94, 0x80` | `(0xD, 1)` | `—` | complete (98) |
-| 3 | 1301 | `0xF9094` | `+0x1648` | `1C12` | `0xE, 0, 3, 0x40, 0x80` | `(0xD, 1)` | `—` | complete (98) |
-| 4 | 1301 | `0xF9094` | `+0x1DE0` | `1C54` | `0xF, 9, 0` | `(4, 2)` | `—` | complete (95) |
-| 5 | 1302 | `0xFA1E4` | `+0xF08` | `1C12` | `0xD2, 0, 3, 0x60, 0x50` | `(0xD, 1)` | `—` | complete (98) |
-| 6 | 1304 | `0xFA860` | `+0xFE0` | `1C12` | `0x12E, 0, 3, 0x80, 0x80` | `(0xD, 1)` | `—` | complete (98) |
-| 7 | 1304 | `0xFA860` | `+0x1948` | `1C12` | `0x10, 0, 3, 0x40, 0x50` | `(0xD, 1)` | `—` | complete (98) |
-| 8 | 1305 | `0xFB6E0` | `+0xD38` | `1C54` | `3, 0xFB, 0` | `(0xA, 6)` | `—` | complete (95) |
-| 9 | 1311 | `0xFD598` | `+0xCF0` | `1C12` | `0x10D, 0, 3, 0x80, 0x80` | `(2, 7)` | `—` | complete (98) |
-| 10 | 1311 | `0xFD598` | `+0x12F4` | `1C12` | `0xA4, 0, 3, 0x60, 0x80` | `(2, 7)` | `—` | complete (98) |
-| 11 | 1315 | `0xFE688` | `+0xA3C` | `1C54` | `2, 0x68, 0` | `(7, 4)` | `—` | complete (95) |
-| 12 | 1317 | `0xFEEB8` | `+0x37C` | `1C54` | `0, 0x163, 0` | `(1, 0)` | `—` | complete (95) |
-| 13 | 1318 | `0xFF1A4` | `+0x82C` | `1C12` | `0x12E, 0, 3, 0xA0, 0x60` | `(0xD, 1)` | `—` | complete (98) |
-| 14 | 1320 | `0xFFD20` | `+0x1360` | `1C54` | `6, 0x179, 0` | `(0xB, 6)` | `—` | complete (95) |
-| 15 | 1326 | `0x101954` | `+0x8EC` | `1C54` | `3, 0x1A9, 0` | `(0xA, 6)` | `—` | complete (95) |
-| 16 | 1327 | `0x101D98` | `+0x23C` | `1C54` | `0, 0x193, 0` | `(1, 2)` | `—` | complete (95) |
-| 17 | 1328 | `0x101F38` | `+0x754` | `1C54` | `3, 0x1A9, 0` | `(0xA, 6)` | `—` | complete (95) |
-| 18 | 1329 | `0x1022EC` | `+0x754` | `1C54` | `3, 0x1A8, 0` | `(0xA, 6)` | `—` | complete (95) |
-| 19 | 1330 | `0x10269C` | `+0x208` | `1C54` | `0, 0x1A0, 0` | `(1, 4)` | `—` | complete (95) |
-| 20 | 1331 | `0x102840` | `+0x2BF8` | `1C12` | `0xE, 0, 0, 0xB0, 0x80` | `—` | `(0x537)` | high (90) |
-
-Snapshot CSV:
+Tracked snapshot:
 
 ```text
 research/capture/capture_candidates_2026-10-04.csv
 ```
 
-Two broad configuration styles were observed:
+The analyzer regenerates richer Markdown/JSON/CSV reports under:
 
 ```text
-simple:
-1C54(...)
-1C35(...)
-1C10
-1C11 loop
+research/capture/generated/
 ```
 
-and:
-
-```text
-complex:
-1C30(...)
-1C12(...)
-1C12(...)
-...
-1C35(...)
-1C10
-1C11 loop
-```
-
-The current analyzer preserves the whole nearby pre-launch configuration block rather than only the nearest `1C12`.
+Large generated reports are not required for recovery because the canonical source components and analyzer are tracked.
 
 ---
 
-# 14. Separate ordinary capture subsystem
+## 14. Separate ordinary capture subsystem
 
-Overlay 3 contains:
+Overlay 3 contains a distinct class family including:
 
 ```text
 13CCaptureScene
@@ -786,19 +639,19 @@ CaptureContext.cpp
 Important static addresses:
 
 ```text
-0x0211A76C  13CCaptureScene
-0x0211A7E4  CaptureScene.cpp
+0x0211A76C  13CCaptureScene RTTI/name
+0x0211A7E4  CaptureScene.cpp string
 0x0211A7A4  CCaptureScene function-pointer/vtable-like table
-0x0211A81C  21CCaptureCommandManage
-0x0211A834  25CCaptureCommandManageData
-0x0211A888  15CCaptureContext
-0x0211AA2C  CCaptureContext function-pointer table
-0x0211AB00  23CCaptureActorDataManage
-0x0211AB1C  34CCaptureBeforeEventActorDataManage
-0x0211AB44  35CCapturePokemonSkillActorDataManage
+0x0211A81C  CCaptureCommandManage RTTI/name
+0x0211A834  CCaptureCommandManageData RTTI/name
+0x0211A888  CCaptureContext RTTI/name
+0x0211AA2C  CCaptureContext function-pointer table area
+0x0211AB00  CCaptureActorDataManage
+0x0211AB1C  CCaptureBeforeEventActorDataManage
+0x0211AB44  CCapturePokemonSkillActorDataManage
 ```
 
-Known `CCaptureScene` table entries:
+Known `CCaptureScene` table entries include:
 
 ```text
 0x020D014C
@@ -811,45 +664,38 @@ Known `CCaptureScene` table entries:
 0x020D0168
 0x020D02DC
 0x020D0478
-plus ARM9 entries such as 0x0200DF14 / 0x0200DF38 / 0x0203E900
 ```
 
-This is the current route to ordinary captures.
+This subsystem is the current route to ordinary overworld captures.
 
 ---
 
-# 15. Last dynamic experiment: what actually happened
+## 15. Last dynamic experiment and why it was inconclusive
 
-A breakpoint at:
+`0x020D012C` was tried as a tentative `CCaptureScene` constructor candidate because it loads a pointer near the `CCaptureScene` table. Two normal captures did **not** hit it.
 
-```text
-0x020D012C
-```
-
-was tried as a tentative `CCaptureScene` constructor candidate.
-
-Two separate ordinary Pokémon captures did **not** hit it.
-
-Therefore:
+Conclusion:
 
 ```text
-0x020D012C is not a proven normal-capture entry
+0x020D012C is not a proven normal-capture entry point
 ```
 
-A follow-up plan attempted breakpoints on ten `CCaptureScene` table methods. That test is **inconclusive**, not negative evidence, because:
+A follow-up sweep attempted breakpoints on ten `CCaptureScene` table methods. That test was **not completed cleanly** because:
 
-1. multi-line commands were pasted into GDB as one malformed command;
-2. reconnecting GDB to the same DeSmuME process proved unreliable;
-3. after a clean restart DeSmuME was white because ARM9 was correctly waiting at `0x02000800`;
-4. most importantly, overlay-3 software breakpoints installed before overlay 3 is loaded can be overwritten by the overlay loader.
+1. multi-line GDB commands were accidentally pasted as one malformed command;
+2. DeSmuME's GDB stub reconnects poorly, so the process often needs restarting for a fresh connection;
+3. DeSmuME starts white at `0x02000800` until GDB issues `continue`;
+4. most importantly, software breakpoints placed in overlay-3 RAM **before overlay 3 is loaded can be overwritten by the overlay loader**.
 
-So **do not conclude those ten methods are unused**. They have not yet been tested with overlay 3 definitely resident.
+Therefore do **not** interpret the failed breakpoint attempt as evidence that the table methods are unused.
+
+The next dynamic trace must first establish that overlay 3 is resident, or break at a stable caller/loader outside the unloaded overlay region.
 
 ---
 
-# 16. GDB / DeSmuME operating notes
+## 16. DeSmuME / GDB operating notes
 
-Launch used:
+Local research used a DeSmuME source build with ARM9 GDB stub:
 
 ```bash
 cd ~/Documents/GitHub/desmume-gdb/desmume/src/frontend/posix
@@ -860,15 +706,15 @@ cd ~/Documents/GitHub/desmume-gdb/desmume/src/frontend/posix
   ~/Documents/GitHub/Pokengineering/work/debug/guardian_signs_debug.nds
 ```
 
-External DeSmuME checkout is not part of this repository.
+The external DeSmuME checkout is not tracked in this repository.
 
-Connect:
+Connect in a fresh second terminal:
 
 ```bash
 gdb -q
 ```
 
-then one command at a time:
+Then enter **one command per line**:
 
 ```gdb
 set architecture arm
@@ -881,62 +727,44 @@ Healthy initial stop:
 0x02000800 in ?? ()
 ```
 
+Then:
+
+```gdb
+continue
+```
+
 Important quirks:
 
-- white DeSmuME screen before `continue` is expected;
-- reconnects to one DeSmuME instance often fail — restart DeSmuME for a fresh GDB connection;
+- white screen before `continue` is expected;
+- reconnecting GDB to the same DeSmuME instance is unreliable; restart DeSmuME for a fresh connection;
 - hardware watchpoints are unreliable;
 - interrupting a freely running target is unreliable;
-- software breakpoints in unloaded overlay RAM can be overwritten;
-- enter GDB commands one per line or use a `.gdb` file;
-- normal-speed launch is easier to control; use the emulator boost key when needed rather than permanently disabling the limiter.
+- ordinary execute breakpoints work much better;
+- software breakpoints in an unloaded overlay can be overwritten when that overlay loads;
+- conditional breakpoints on extremely hot dispatchers can make the emulator appear frozen;
+- use a `.gdb` command file for larger command batches rather than multi-line interactive paste.
 
 ---
 
-# 17. Do-not-repeat list
-
-Do not go back to:
-
-- raw species-21 searches;
-- `0x0222F104` as the capture selector;
-- `0x0222D1A8` as the intro encounter definition;
-- `0x0201A264` as the encounter trigger;
-- `0x02012DA8` / `0x02012DB8` generic pool-manager paths;
-- `0x0201A5F8` alone as the unique trigger;
-- `0x020D71D8` hard-coded `21` as the intro trigger;
-- `0x021007A8` as launch;
-- `0x020D40CC` as launch;
-- `0x4C` as capture ID;
-- lookup index `13` as capture/species ID;
-- raw-searching compressed ROM for `0x1C54`;
-- treating `1C30`, `1C35`, or `1C36` alone as launchers;
-- claiming state `3` is unknown;
-- re-proving the `1C10` state bridge;
-- trusting a convenient `data/data_game_us.acf` without signature validation;
-- claiming the 20 `1C10` sites are all captures;
-- treating `0x020D012C` as a proven normal-capture constructor.
-
----
-
-# 18. Key address reference
+## 17. Key address reference
 
 | Address | Current meaning |
 |---|---|
 | `0x02065A80` | script VM interpreter |
-| `0x02065E14` | VM command dispatcher |
+| `0x02065E14` | VM game-command dispatcher |
 | `0x0211C9C8` | group-7 command table area |
-| `0x021026BC` | `1C10` |
-| `0x021026D8` | `1C11` |
-| `0x021026F8` | `1C12` |
-| `0x021029C4` | `1C30` |
-| `0x02102E28` | `1C35` |
-| `0x02102E44` | `1C36` |
-| `0x0210360C` | `1C54` |
+| `0x021026BC` | `1C10` handler |
+| `0x021026D8` | `1C11` handler |
+| `0x021026F8` | `1C12` handler |
+| `0x021029C4` | `1C30` handler |
+| `0x02102E28` | `1C35` handler |
+| `0x02102E44` | `1C36` handler |
+| `0x0210360C` | `1C54` handler |
 | `0x02116774` | capture-before record writer |
 | `0x02117258` | `LoadCapturePokemon` |
-| `0x02117388` | load-entry helper |
+| `0x02117388` | unique load-entry helper |
 | `0x02123148` | global state-manager pointer |
-| `0x02123158` | observed live manager |
+| `0x02123158` | observed live state manager |
 | `0x021018E4` | state resolver |
 | `0x021255CC` | state-3 singleton |
 | `0x0211CEDC` | `CSkyCaptureBeforeState` live vptr/address point |
@@ -944,49 +772,16 @@ Do not go back to:
 | `0x0211A76C` | `CCaptureScene` RTTI/name |
 | `0x0211A7A4` | `CCaptureScene` table |
 | `0x0211A888` | `CCaptureContext` RTTI/name |
-| `0x0211AA2C` | `CCaptureContext` table |
-| `0x0222F104` | display/name identity field only |
-| `0x0222D1A8` | Spearow entry in species table |
+| `0x0211AA2C` | `CCaptureContext` table area |
+| `0x0222F104` | UI/display species identity only |
+| `0x0222D1A8` | Spearow species-table entry |
 | `0x0201A5F8` | species-object lookup |
 
 ---
 
-# 19. Reproduce current scripted-capture result
+## 18. Exact next task
 
-```bash
-# build ROM if necessary
-bash tools/build_debug_rom.sh
-
-# run canonical raw-ACF sweep
-python3 tools/analyze_capture_scripts.py
-```
-
-Expected headline:
-
-```text
-Known Spearow signature verified at +0xF844C.
-script-like streams : 1695
-capture transitions : 20
-setup-only scripts  : 0
-```
-
-Generated reports go to:
-
-```text
-research/capture/generated/capture_analysis.md
-research/capture/generated/capture_analysis.json
-research/capture/generated/capture_candidates.csv
-research/capture/generated/all_script_calls.csv
-research/capture/generated/script_index.csv
-```
-
-Large generated JSON/CSV files do not need to be committed because the tracked analyzer and source data regenerate them.
-
----
-
-# 20. Exact next task
-
-**Do not search for more `1C10` calls first.**
+Do **not** search for more `1C10` calls first.
 
 Next objective:
 
@@ -1004,13 +799,13 @@ CCaptureContext
 capture definition
 ```
 
-Preferred approach is now **static-first**:
+Preferred approach is **static-first**:
 
-1. find writes/references to the `CCaptureScene` vptr/table;
+1. find all writes/references to the `CCaptureScene` vptr/table;
 2. find callers/owners of the `0x020Dxxxx` scene methods;
 3. identify allocation/construction paths for `CCaptureScene` and `CCaptureContext`;
 4. trace backward to world/map actor code and encounter parameters;
-5. select a reliable breakpoint outside unloaded overlay RAM, or identify the overlay-load boundary;
+5. find a stable breakpoint outside unloaded overlay RAM, or identify a reliable overlay-load boundary;
 6. then perform one clean dynamic ordinary-capture trace.
 
 After that:
@@ -1018,13 +813,13 @@ After that:
 1. automate ordinary-capture trigger/definition extraction;
 2. map the 20 scripted state-3 triggers to maps/missions;
 3. deduplicate triggers into capture definitions;
-4. build the capture database;
+4. build the complete capture database;
 5. identify a safe arbitrary-capture dispatcher;
-6. implement overlay repacking;
-7. add `Capture Select` to the main menu.
+6. implement overlay BLZ repacking/edit pipeline;
+7. add **Capture Select** to the main menu.
 
 ---
 
-## Exact stopping point, 2026-10-04
+## Final stopping point — 2026-10-04
 
-> **The `CSkyCaptureBeforeState` script path is mapped and bulk-swept. The next unresolved bridge is ordinary overworld encounter → normal capture launcher → `CCaptureScene`. The attempted `CCaptureScene` breakpoint sweep was not completed cleanly because overlay-3 breakpoints were being set before a reliable post-load stop point existed.**
+> **The scripted `CSkyCaptureBeforeState` route is proven and exhaustively swept across the canonical raw ACF. The next unresolved problem is the separate ordinary overworld capture route. Start by statically tracing `CCaptureScene` / `CCaptureContext` ownership and construction, then choose a breakpoint that is valid only after overlay 3 is resident.**
