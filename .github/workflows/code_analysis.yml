@@ -1,0 +1,43 @@
+name: Code Analysis
+
+on:
+  pull_request:
+    paths:
+      - "tools/analyze_nds_code.py"
+      - "tools/analyze_game_code.sh"
+      - "tools/test_analyze_nds_code.py"
+      - "docs/code_reverse_engineering.md"
+      - "header.bin"
+      - "arm9.bin"
+      - "arm7.bin"
+      - "a9ovr.bin"
+      - "a9ovr_data.bin"
+      - "fat.bin"
+      - ".github/workflows/code_analysis.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  code_analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v7
+
+      - name: Run Synthetic Executable Analyzer Test
+        run: python3 tools/test_analyze_nds_code.py
+
+      - name: Analyze Guardian Signs Executables
+        run: |
+          python3 tools/analyze_nds_code.py --root . --output /tmp/code_analysis --metadata-only
+          echo
+          echo "--- retail summary ---"
+          cat /tmp/code_analysis/summary.json
+          echo
+          echo "--- overlays ---"
+          cat /tmp/code_analysis/overlays.csv
+          echo
+          echo "--- static initializers ---"
+          cat /tmp/code_analysis/static_initializers.csv
