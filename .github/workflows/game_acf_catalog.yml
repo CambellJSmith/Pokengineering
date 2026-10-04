@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - "tools/catalog_game_acf.py"
+      - "tools/inventory_recursive_containers.py"
       - "tools/extract_game_data.sh"
       - "tools/test_game_acf_catalog.sh"
+      - "tools/test_recursive_container_inventory.py"
       - "tools/extract_nitrofs_file.py"
       - "tools/setup_guardian_tools.sh"
       - "fat.bin"
