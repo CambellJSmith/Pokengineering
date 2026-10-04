@@ -1,5 +1,7 @@
 # Guardian Signs code reverse engineering
 
+The first capture-related script dispatch is reconstructed in [native script dispatch](research/script_native_dispatch.md), with a bank-7 handler inventory, reproducible offline analysis, and a single GDB RAM-capture workflow.
+
 The project now treats the Nintendo DS executable code as a first-class reverse-engineering target rather than only cataloguing assets.
 
 Guardian Signs stores its always-resident ARM9 program in `arm9.bin`, its ARM7 program in `arm7.bin`, its ARM9 overlay table in `a9ovr.bin`, and the packed ARM9 overlay payload region in `a9ovr_data.bin`. `fat.bin` supplies the physical ROM ranges referenced by each overlay-table file ID.
