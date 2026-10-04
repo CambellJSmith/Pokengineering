@@ -16,11 +16,11 @@ The command writes `work/code_analysis/` with:
 
 - `summary.json` — executable load addresses, entry points, overlay counts, compression counts, RAM-overlap groups, and hashes;
 - `memory_map.csv` — resident ARM9/ARM7 regions and every ARM9 overlay RAM range;
-- `overlays.csv` — overlay ID, FAT file ID, RAM address/size, BSS size, static-initializer range, compression metadata, physical ROM range, hash, and overlapping overlay IDs;
-- `static_initializers.csv` — function-pointer seeds recovered from uncompressed overlays' static initializer tables, including ARM/Thumb state from the low address bit;
-- `strings.csv` — printable ASCII strings with both file offsets and loaded RAM addresses for resident ARM9 and uncompressed overlays;
+- `overlays.csv` — overlay ID, FAT file ID, RAM address/size, BSS size, static-initializer range, compression metadata, raw/decompressed hashes, physical ROM range, and overlapping overlay IDs;
+- `static_initializers.csv` — function-pointer seeds recovered from overlays' static initializer tables, including ARM/Thumb state from the low address bit;
+- `strings.csv` — printable ASCII strings with both file offsets and loaded RAM addresses for resident ARM9 and every decoded overlay;
 - `ghidra_targets.csv` — one row per standalone program to import, with the correct load address and Ghidra processor language;
-- `executables/arm9.bin`, `executables/arm7.bin`, and `executables/overlays/*.raw.bin` — exact analysis inputs when the default extraction mode is used.
+- `executables/arm9.bin`, `executables/arm7.bin`, `executables/overlays/*.raw.bin`, and `executables/overlays/overlay_XXX.bin` — exact raw and decoded analysis inputs when the default extraction mode is used.
 
 Use `--metadata-only` when only the tables are wanted:
 
@@ -33,6 +33,18 @@ bash tools/analyze_game_code.sh --metadata-only
 Nintendo DS ARM9 overlays are loaded into RAM only when needed. Multiple overlay IDs can occupy the same RAM window at different times, so importing every overlay into one flat address space would create false conflicts. The generated `overlaps_overlay_ids` field and `overlay_ram_overlap_groups` summary make that explicit.
 
 Analyze `arm9` as the resident program and each overlay as its own Ghidra program. Cross-references between resident code and overlays should be recorded as project metadata rather than fabricated as simultaneously resident memory.
+
+## BLZ/code compression
+
+Guardian Signs marks its ARM9 overlays as Nitro code-compressed. `tools/blz.py` implements the backwards-LZ decoder used for Nintendo DS executable code. The decoder:
+
+- validates the trailing BLZ size envelope and padding;
+- preserves any uncompressed prefix;
+- expands literals and back-references from the end of the stream toward the beginning;
+- preserves optional appended footer bytes where applicable; and
+- is considered successful for an overlay only when the decoded byte count exactly matches the overlay table's declared RAM size.
+
+The analyzer retains each original compressed payload as `overlay_XXX.raw.bin` and writes the decoded runtime image as `overlay_XXX.bin`. Ghidra targets always point to the decoded image.
 
 ## Ghidra import settings
 
@@ -54,7 +66,7 @@ The extracted root `arm9.bin` can contain footer data after the executable body.
 
 ## Static initializer seeds
 
-Each standard Nintendo DS overlay-table entry contains a start/end RAM range for the overlay's static initializer pointer table. For an uncompressed overlay, the analyzer converts that RAM range back to file offsets and records each pointer in `static_initializers.csv`.
+Each standard Nintendo DS overlay-table entry contains a start/end RAM range for the overlay's static initializer pointer table. After BLZ decoding, the analyzer converts that RAM range back to file offsets and records each pointer in `static_initializers.csv`.
 
 The low bit of an ARM function pointer is the interworking state bit:
 
@@ -62,12 +74,6 @@ The low bit of an ARM function pointer is the interworking state bit:
 - low bit set → Thumb entry, with the actual code address equal to `pointer & ~1`.
 
 These are high-value function seeds for automatic analysis and manual naming.
-
-## Compressed overlays
-
-The final overlay-table word carries a 24-bit compressed-size field and an 8-bit flags field. The analyzer records those fields and treats flag bit 0 as the standard Nitro overlay compression flag.
-
-Compressed payloads are extracted verbatim, hashed, and mapped, but are deliberately marked `importable=False` in `ghidra_targets.csv`. Decompression is the next executable-tooling milestone if Guardian Signs actually uses compressed ARM9 overlays; inventing code addresses from compressed bytes would be incorrect.
 
 ## First substantive target
 
