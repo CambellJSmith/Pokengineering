@@ -1,0 +1,137 @@
+# SPDX-FileCopyrightText: 2026 SombrAbsol
+#
+# SPDX-License-Identifier: MIT
+
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/ci.yml"
+      - "include/**"
+      - "src/**"
+      - "LICENSE"
+      - "Makefile"
+      - "README.md"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/ci.yml"
+      - "include/**"
+      - "src/**"
+      - "LICENSE"
+      - "Makefile"
+      - "README.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TARGET: acftool
+
+jobs:
+  build:
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26, windows-2025]
+        include:
+          - os: ubuntu-26.04
+            artifact-suffix: linux
+            extension: ""
+
+          - os: macos-26
+            artifact-suffix: macos
+            extension: ""
+
+          - os: windows-2025
+            artifact-suffix: windows
+            extension: .exe
+
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install LLVM (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y llvm
+
+      - name: Install LLVM (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm
+          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+
+      - name: Build ${{ env.TARGET }}
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            make CC=clang STATIC=0 release
+          else
+            make CC=clang STATIC=1 release
+          fi
+
+      - name: Upload ${{ env.TARGET }} artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.TARGET }}-${{ matrix.artifact-suffix }}
+          path: |
+            build/${{ env.TARGET }}${{ matrix.extension }}
+            LICENSE
+            README.md
+
+          if-no-files-found: error
+          retention-days: 1
+
+  release-latest:
+    name: Update latest release
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-26.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artefacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+
+      - name: Package ZIPs
+        run: |
+          for suffix in linux macos windows; do
+            dir="artifacts/${{ env.TARGET }}-${suffix}"
+            ext=""
+            [ "$suffix" = "windows" ] && ext=".exe"
+
+            mkdir -p "pkg/${suffix}"
+            mv "${dir}/build/${{ env.TARGET }}${ext}" "pkg/${suffix}/"
+            mv "${dir}/LICENSE"                       "pkg/${suffix}/"
+            mv "${dir}/README.md"                     "pkg/${suffix}/"
+
+            (cd "pkg/${suffix}" && zip "../../${{ env.TARGET }}-${suffix}.zip" "${{ env.TARGET }}${ext}" LICENSE README.md)
+          done
+
+      - name: Update latest release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: latest
+          name: Latest build
+          prerelease: true
+          body: |
+            Automated build from commit ${{ github.sha }}.
+          files: |
+            ${{ env.TARGET }}-linux.zip
+            ${{ env.TARGET }}-macos.zip
+            ${{ env.TARGET }}-windows.zip
