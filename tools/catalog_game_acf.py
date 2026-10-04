@@ -35,10 +35,11 @@ MAGIC_FORMATS: Final[dict[bytes, str]] = {
     b"\x89PNG": "PNG image",
 }
 
-COMPRESSED_TYPES: Final[dict[int, str]] = {
+NITRO_COMPRESSION_TYPES: Final[dict[int, str]] = {
     0x10: "Nintendo LZ10",
     0x11: "Nintendo LZ11",
-    0x20: "Nintendo Huffman",
+    0x24: "Nintendo Huffman 4-bit",
+    0x28: "Nintendo Huffman 8-bit",
     0x30: "Nintendo RLE",
 }
 
@@ -84,12 +85,29 @@ def ascii_magic(data: bytes) -> str:
     return ""
 
 
+def identify_nitro_compression(data: bytes) -> str | None:
+    if len(data) < 4 or data[0] not in NITRO_COMPRESSION_TYPES:
+        return None
+    decoded_size = int.from_bytes(data[1:4], "little")
+    header_size = 4
+    if decoded_size == 0 and data[0] in (0x10, 0x11) and len(data) >= 8:
+        decoded_size = int.from_bytes(data[4:8], "little")
+        header_size = 8
+    if decoded_size <= 0:
+        return None
+    compressed_payload_size = len(data) - header_size
+    if decoded_size < compressed_payload_size:
+        return None
+    return NITRO_COMPRESSION_TYPES[data[0]]
+
+
 def identify_format(data: bytes) -> tuple[str, int | None]:
     for magic, label in MAGIC_FORMATS.items():
         if data.startswith(magic):
             return label, 0
-    if data and data[0] in COMPRESSED_TYPES:
-        return COMPRESSED_TYPES[data[0]], 0
+    compression = identify_nitro_compression(data)
+    if compression is not None:
+        return compression, 0
     scan = data[:64]
     matches: list[tuple[int, str]] = []
     for magic, label in MAGIC_FORMATS.items():
