@@ -82,9 +82,10 @@ def main() -> int:
     if acf_entries[2].data != literal_payload:
         raise SystemExit("synthetic ACF compressed payload was not decoded")
 
-    top_narc = build_narc([b"RGCNsynthetic-tiles", lz10_literals(nested_acf)])
+    wrapped_narc = b"WRAP" + build_narc([b"RLCNsynthetic-wrapped-palette"])
+    top_narc = build_narc([b"RGCNsynthetic-tiles", lz10_literals(nested_acf), wrapped_narc])
     narc_entries = parse_narc(top_narc)
-    if len(narc_entries) != 2 or narc_entries[0].data != b"RGCNsynthetic-tiles":
+    if len(narc_entries) != 3 or narc_entries[0].data != b"RGCNsynthetic-tiles":
         raise SystemExit("synthetic NARC entries were not parsed correctly")
 
     with tempfile.TemporaryDirectory() as temp:
@@ -101,11 +102,11 @@ def main() -> int:
         summary = build_inventory(archive_dir, output_dir)
         if summary["top_level_slots"] != 2 or summary["top_level_real_entries"] != 1:
             raise SystemExit("recursive summary top-level counts are incorrect")
-        if summary["inventory_rows"] != 7 or summary["real_entries"] != 5 or summary["unused_entries"] != 2:
+        if summary["inventory_rows"] != 9 or summary["real_entries"] != 7 or summary["unused_entries"] != 2:
             raise SystemExit("recursive summary row counts are incorrect")
         if summary["max_depth"] != 3:
             raise SystemExit("recursive summary depth is incorrect")
-        if summary["parsed_containers"] != {"ACF": 1, "NARC": 1}:
+        if summary["parsed_containers"] != {"ACF": 1, "NARC": 2}:
             raise SystemExit("recursive summary container counts are incorrect")
         if summary["container_parse_errors"] != 0 or summary["max_depth_stops"] != 0:
             raise SystemExit("synthetic recursive inventory did not fully parse")
@@ -123,6 +124,8 @@ def main() -> int:
             "acf:0000/narc:0001/acf:0000",
             "acf:0000/narc:0001/acf:0001",
             "acf:0000/narc:0001/acf:0002",
+            "acf:0000/narc:0002",
+            "acf:0000/narc:0002/narc:0000",
             "acf:0001",
         }
         if set(by_path) != expected_paths:
@@ -133,6 +136,12 @@ def main() -> int:
             raise SystemExit("nested compressed ACF child was not classified")
         if by_path["acf:0000/narc:0001/acf:0000"]["parse_status"] != "unused":
             raise SystemExit("nested unused ACF slot was not preserved")
+        if by_path["acf:0000/narc:0002"]["detected_format"] != "embedded NARC archive":
+            raise SystemExit("wrapped NARC was not recognized as an embedded container")
+        if by_path["acf:0000/narc:0002"]["parse_status"] != "parsed":
+            raise SystemExit("wrapped NARC was not recursively parsed")
+        if by_path["acf:0000/narc:0002/narc:0000"]["effective_format"] != "NCLR palette":
+            raise SystemExit("wrapped NARC child was not classified")
 
     print("recursive container inventory synthetic test passed")
     return 0
