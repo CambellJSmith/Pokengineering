@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" # Resolve the repository root.
-source_acf="${1:-$root_dir/data/data_localize_us.acf}" # Test the supplied localization archive or the current extracted archive.
+source_acf="${1:-}" # Test an explicit correctly extracted ACF when supplied, otherwise reconstruct it from the raw FAT payload.
 workspace_root="$(mktemp -d)" # Isolate generated game data from the repository checkout.
 workspace="$workspace_root/workspace" # Store the editable round-trip test workspace here.
 verify_root="$workspace_root/verify" # Store the rebuilt archive verification extraction here.
@@ -17,9 +17,13 @@ trap cleanup EXIT # Guarantee cleanup on both success and failure.
 
 [[ -x "$acftool" ]] || { printf 'missing acftool; run tools/setup_guardian_tools.sh first\n' >&2; exit 1; } # Require the ACF utility.
 [[ -x "$ra3mes" ]] || { printf 'missing ra3mes; run tools/setup_guardian_tools.sh first\n' >&2; exit 1; } # Require the MES converter.
-[[ -f "$source_acf" ]] || { printf 'missing localization archive: %s\n' "$source_acf" >&2; exit 1; } # Require an input archive.
 
-bash "$root_dir/tools/extract_localization.sh" "$source_acf" "$workspace" # Extract the ACF and convert all retail MES entries to JSON.
+if [[ -n "$source_acf" ]]; then # Exercise a caller-supplied valid ACF when requested.
+    [[ -f "$source_acf" ]] || { printf 'missing localization archive: %s\n' "$source_acf" >&2; exit 1; } # Require the explicit input archive.
+    bash "$root_dir/tools/extract_localization.sh" "$source_acf" "$workspace" # Extract the supplied ACF and convert all retail MES entries to JSON.
+else
+    bash "$root_dir/tools/extract_localization.sh" "" "$workspace" # Reconstruct the ACF directly from fat_data.bin before converting MES entries.
+fi
 
 read -r file_index string_index < <(python3 - "$workspace/json" <<'PY' # Locate the first editable string without printing copyrighted text.
 import json
