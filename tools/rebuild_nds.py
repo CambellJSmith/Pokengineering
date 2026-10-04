@@ -78,23 +78,24 @@ def validate_nitrofs_ranges(
     file_ids: dict[int, str],
     payload_base: int,
     payload_size: int,
-) -> list[int]:  # Validate that the mapped NitroFS files form an ordered, non-overlapping tail of the FAT.
-    nitro_ids: list[int] = sorted(file_ids)  # Preserve FAT file-ID order for deterministic repacking.
-    if not nitro_ids:  # Refuse to rebuild a ROM without any named NitroFS files.
+) -> list[int]:  # Validate that the mapped NitroFS files form a complete, non-overlapping tail of the FAT.
+    file_id_order: list[int] = sorted(file_ids)  # Preserve the numeric FAT-ID set separately from physical ROM ordering.
+    if not file_id_order:  # Refuse to rebuild a ROM without any named NitroFS files.
         raise ValueError("_file_IDs.txt does not contain any NitroFS file IDs")  # Explain why the filesystem cannot be rebuilt.
-    expected_ids: list[int] = list(range(nitro_ids[0], len(fat)))  # Guardian Signs maps every FAT entry after its overlay files into NitroFS.
-    if nitro_ids != expected_ids:  # Reject missing IDs because gap ownership would otherwise be ambiguous.
+    expected_ids: list[int] = list(range(file_id_order[0], len(fat)))  # Guardian Signs maps every FAT entry after its overlay files into NitroFS.
+    if file_id_order != expected_ids:  # Reject missing IDs because gap ownership would otherwise be ambiguous.
         raise ValueError("mapped NitroFS file IDs are not a contiguous tail of the FAT")  # Require a complete filesystem mapping.
+    nitro_ids: list[int] = sorted(file_id_order, key=lambda file_id: (fat[file_id][0], fat[file_id][1], file_id))  # Repack by physical ROM order because late Guardian Signs FAT IDs are not strictly address-ordered.
     previous_end: int = payload_base  # Begin ordering checks at the validated fat_data.bin base.
-    for file_id in nitro_ids:  # Validate every mapped file before writing output.
+    for file_id in nitro_ids:  # Validate every mapped file in physical ROM order before writing output.
         start, end = fat[file_id]  # Read the original absolute ROM range.
-        if start < previous_end or end < start:  # Reject overlapping, reversed, or out-of-order FAT ranges.
-            raise ValueError(f"FAT file ID 0x{file_id:x} is not ordered after the previous NitroFS file")  # Identify the invalid entry.
+        if start < previous_end or end < start:  # Reject overlapping or reversed physical FAT ranges.
+            raise ValueError(f"FAT file ID 0x{file_id:x} overlaps an earlier physical NitroFS range")  # Identify the invalid entry.
         relative_end: int = end - payload_base  # Translate the absolute end into fat_data.bin coordinates.
         if start < payload_base or relative_end > payload_size:  # Ensure the complete file fits in the raw payload.
             raise ValueError(f"FAT file ID 0x{file_id:x} falls outside fat_data.bin")  # Report a bad range or base.
-        previous_end = end  # Advance the monotonic range check.
-    return nitro_ids  # Return the validated ordered NitroFS IDs for repacking.
+        previous_end = end  # Advance the monotonic physical range check.
+    return nitro_ids  # Return the validated physical NitroFS order for gap-preserving repacking.
 
 
 def validate_fixed_layout(root: Path, header: bytes, payload_base: int) -> dict[str, tuple[Path, int]]:  # Verify extracted fixed ROM components against their header offsets and sizes.
@@ -181,10 +182,10 @@ def rebuild_filesystem(
     replacements: dict[int, Path],
 ) -> tuple[list[tuple[int, int]], int]:  # Repack NitroFS while preserving original inter-file gap bytes and updating absolute FAT ranges.
     new_fat: list[tuple[int, int]] = list(fat)  # Preserve overlay FAT entries and mutate only mapped NitroFS entries.
-    source_cursor: int = 0  # Track the original payload-relative end of the previously processed file.
+    source_cursor: int = 0  # Track the original payload-relative end of the previously processed physical file.
     output_cursor: int = payload_base  # Track the next absolute ROM position in the rebuilt NitroFS region.
     destination.seek(payload_base)  # Begin writing at the validated original NitroFS base.
-    for file_id in nitro_ids:  # Repack each mapped NitroFS file in FAT order.
+    for file_id in nitro_ids:  # Repack each mapped NitroFS file in physical ROM order.
         old_start, old_end = fat[file_id]  # Read the file's original absolute range.
         relative_start: int = old_start - payload_base  # Translate its start into the original raw payload.
         relative_end: int = old_end - payload_base  # Translate its end into the original raw payload.
@@ -200,7 +201,7 @@ def rebuild_filesystem(
             copy_mmap_range(destination, payload, relative_start, relative_end)  # Copy the original file bytes exactly.
             output_cursor += relative_end - relative_start  # Advance by the original file size.
         new_fat[file_id] = (new_start, output_cursor)  # Store the rebuilt absolute start/end range for this FAT ID.
-        source_cursor = relative_end  # Advance the source cursor to the end of the original file before preserving its following gap.
+        source_cursor = relative_end  # Advance the source cursor to the end of the original physical file before preserving its following gap.
     copy_mmap_range(destination, payload, source_cursor, len(payload))  # Preserve the original trailing payload bytes after the final NitroFS file.
     output_cursor += len(payload) - source_cursor  # Include the preserved trailing bytes in the new used-ROM size.
     return new_fat, output_cursor  # Return the updated FAT and the first unused absolute ROM byte.
@@ -237,8 +238,8 @@ def main() -> int:  # Validate extracted components, rebuild NitroFS/FAT, update
     with fat_data_path.open("rb") as source:  # Keep the large raw filesystem payload open while it is mapped and rebuilt.
         with mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_READ) as payload:  # Map fat_data.bin read-only for validation and streaming copies.
             payload_base, signature_score, bounds_score = infer_payload_base(payload, fat, file_ids)  # Reuse the signature-validated FAT base from the localization milestone.
-            nitro_ids: list[int] = validate_nitrofs_ranges(fat, file_ids, payload_base, len(payload))  # Require a complete ordered NitroFS mapping before modifying offsets.
-            first_nitro_id: int = nitro_ids[0]  # Record where NitroFS begins after the ARM9 overlay FAT entries.
+            nitro_ids: list[int] = validate_nitrofs_ranges(fat, file_ids, payload_base, len(payload))  # Require a complete non-overlapping NitroFS mapping before modifying offsets.
+            first_nitro_id: int = min(file_ids)  # Record the numeric FAT boundary after the ARM9 overlay entries independently of physical file ordering.
             if any(file_id < first_nitro_id for file_id in replacements):  # Protect overlay FAT entries from path-based replacement.
                 raise ValueError("replacement unexpectedly resolved to an overlay FAT entry")  # Refuse a structurally unsafe target.
             fixed_layout: dict[str, tuple[Path, int]] = validate_fixed_layout(root, original_header, payload_base)  # Confirm every fixed ROM component fits the header geometry.
