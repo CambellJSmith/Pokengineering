@@ -5,8 +5,9 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 catalog_dir="$root_dir/work/game_acf/graphics_catalog"
 preview_dir="$root_dir/work/game_acf/graphics_previews"
 output_dir="$root_dir/work/game_acf/graphics_identification"
+first_preview="$(find "$preview_dir/candidates" -type f -name '*.png' -print -quit 2>/dev/null || true)"
 
-if [[ ! -f "$preview_dir/candidate_previews.csv" ]] || ! find "$preview_dir/candidates" -type f -name '*.png' -print -quit 2>/dev/null | grep -q .; then
+if [[ ! -f "$preview_dir/candidate_previews.csv" || -z "$first_preview" ]]; then
     printf 'full rendered graphics previews are required.\n' >&2
     printf 'Generate them first with:\n\n  rm -rf work/game_acf/graphics_previews\n  bash tools/render_game_graphics.sh\n\n' >&2
     exit 1
