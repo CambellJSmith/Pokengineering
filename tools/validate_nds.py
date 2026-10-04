@@ -16,7 +16,6 @@ from rebuild_nds import (
     ARM9_SIZE_FIELD,
     BANNER_OFFSET_FIELD,
     DEVICE_CAPACITY_FIELD,
-    FAT_ENTRY_SIZE,
     FAT_OFFSET_FIELD,
     FAT_SIZE_FIELD,
     FNT_OFFSET_FIELD,
@@ -29,6 +28,8 @@ from rebuild_nds import (
     crc16_nintendo,
     read_u32,
 )
+
+FAT_ENTRY_SIZE: Final[int] = 8
 
 
 def read_range(path: Path, start: int, end: int) -> bytes:
