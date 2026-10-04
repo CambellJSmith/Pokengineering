@@ -6,9 +6,11 @@ import csv
 import hashlib
 import json
 import struct
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import blz
 
 OVT_ENTRY_SIZE = 32
 HEADER_MIN_SIZE = 0x160
@@ -76,7 +78,6 @@ class Overlay:
     @property
     def file_ram_end(self) -> int:
         return self.ram_address + self.ram_size
-
 
 
 def parse_fat(data: bytes) -> list[tuple[int, int]]:
@@ -161,6 +162,24 @@ def parse_overlay_table(
     return overlays
 
 
+def decode_overlay(overlay: Overlay, payload: bytes) -> bytes:
+    if overlay.compressed:
+        try:
+            decoded = blz.decompress(payload)
+        except blz.BlzError as error:
+            raise CodeAnalysisError(
+                f"overlay {overlay.overlay_id} BLZ decompression failed: {error}"
+            ) from error
+    else:
+        decoded = payload
+    if len(decoded) != overlay.ram_size:
+        raise CodeAnalysisError(
+            f"overlay {overlay.overlay_id} decodes to {len(decoded)} bytes, "
+            f"but overlay table declares RAM size {overlay.ram_size}"
+        )
+    return decoded
+
+
 def ascii_strings(data: bytes, minimum: int = 5) -> list[tuple[int, str]]:
     rows: list[tuple[int, str]] = []
     start: int | None = None
@@ -179,9 +198,7 @@ def ascii_strings(data: bytes, minimum: int = 5) -> list[tuple[int, str]]:
     return rows
 
 
-def static_initializer_rows(overlay: Overlay, payload: bytes) -> list[dict[str, Any]]:
-    if overlay.compressed:
-        return []
+def static_initializer_rows(overlay: Overlay, decoded: bytes) -> list[dict[str, Any]]:
     if not (overlay.ram_address <= overlay.static_init_start <= overlay.file_ram_end):
         return []
     if not (overlay.ram_address <= overlay.static_init_end <= overlay.file_ram_end):
@@ -191,12 +208,12 @@ def static_initializer_rows(overlay: Overlay, payload: bytes) -> list[dict[str, 
 
     start = overlay.static_init_start - overlay.ram_address
     end = overlay.static_init_end - overlay.ram_address
-    if end > len(payload):
+    if end > len(decoded):
         return []
 
     rows: list[dict[str, Any]] = []
     for index, offset in enumerate(range(start, end, 4)):
-        target = u32(payload, offset)
+        target = u32(decoded, offset)
         thumb = bool(target & 1)
         address = target & ~1
         rows.append(
@@ -341,23 +358,25 @@ def analyze(root: Path, output: Path, *, extract: bool = True) -> dict[str, Any]
         rel_start = overlay.data_offset
         rel_end = rel_start + overlay.physical_size
         payload = overlay_region[rel_start:rel_end]
+        decoded = decode_overlay(overlay, payload)
         raw_name = f"overlay_{overlay.overlay_id:03d}.raw.bin"
+        decoded_name = f"overlay_{overlay.overlay_id:03d}.bin"
         if extract:
             (overlay_dir / raw_name).write_bytes(payload)
+            (overlay_dir / decoded_name).write_bytes(decoded)
 
-        init_rows = static_initializer_rows(overlay, payload)
+        init_rows = static_initializer_rows(overlay, decoded)
         initializer_rows.extend(init_rows)
-        if not overlay.compressed:
-            for offset, text in ascii_strings(payload):
-                string_rows.append(
-                    {
-                        "module": f"overlay_{overlay.overlay_id:03d}",
-                        "overlay_id": overlay.overlay_id,
-                        "file_offset": f"0x{offset:X}",
-                        "ram_address": f"0x{overlay.ram_address + offset:08X}",
-                        "text": text,
-                    }
-                )
+        for offset, text in ascii_strings(decoded):
+            string_rows.append(
+                {
+                    "module": f"overlay_{overlay.overlay_id:03d}",
+                    "overlay_id": overlay.overlay_id,
+                    "file_offset": f"0x{offset:X}",
+                    "ram_address": f"0x{overlay.ram_address + offset:08X}",
+                    "text": text,
+                }
+            )
 
         overlap = [
             other.overlay_id
@@ -380,27 +399,26 @@ def analyze(root: Path, output: Path, *, extract: bool = True) -> dict[str, Any]
                 "fat_start": f"0x{overlay.fat_start:08X}",
                 "fat_end": f"0x{overlay.fat_end:08X}",
                 "physical_size": overlay.physical_size,
+                "decoded_size": len(decoded),
                 "compressed_size_field": overlay.compressed_size,
                 "flags": f"0x{overlay.flags:02X}",
                 "compressed": overlay.compressed,
-                "sha256": overlay.sha256,
+                "raw_sha256": overlay.sha256,
+                "decoded_sha256": sha256(decoded),
                 "overlaps_overlay_ids": " ".join(str(value) for value in sorted(overlap)),
                 "raw_path": f"executables/overlays/{raw_name}",
+                "decoded_path": f"executables/overlays/{decoded_name}",
             }
         )
         ghidra_rows.append(
             {
                 "program": f"overlay_{overlay.overlay_id:03d}",
-                "path": f"executables/overlays/{raw_name}",
+                "path": f"executables/overlays/{decoded_name}",
                 "load_address": f"0x{overlay.ram_address:08X}",
                 "entry_point": "",
                 "processor": "ARM:LE:32:v5t",
-                "importable": not overlay.compressed,
-                "notes": (
-                    "raw overlay is compressed; decompress before code import"
-                    if overlay.compressed
-                    else "load as a separate program because overlays may share RAM addresses"
-                ),
+                "importable": True,
+                "notes": "BLZ-decoded overlay; analyze separately because overlays share RAM windows",
             }
         )
 
@@ -410,8 +428,9 @@ def analyze(root: Path, output: Path, *, extract: bool = True) -> dict[str, Any]
         [
             "overlay_id", "file_id", "ram_address", "ram_size", "bss_size", "ram_end",
             "static_init_start", "static_init_end", "static_initializer_count", "fat_start",
-            "fat_end", "physical_size", "compressed_size_field", "flags", "compressed", "sha256",
-            "overlaps_overlay_ids", "raw_path",
+            "fat_end", "physical_size", "decoded_size", "compressed_size_field", "flags",
+            "compressed", "raw_sha256", "decoded_sha256", "overlaps_overlay_ids", "raw_path",
+            "decoded_path",
         ],
     )
     write_csv(
@@ -470,7 +489,7 @@ def analyze(root: Path, output: Path, *, extract: bool = True) -> dict[str, Any]
 
     overlap = overlap_groups(overlays)
     summary = {
-        "format": "pokengineering-nds-code-analysis-v1",
+        "format": "pokengineering-nds-code-analysis-v2",
         "header": {
             "game_title": header[:12].rstrip(b"\x00").decode("ascii", errors="replace"),
             "game_code": header[12:16].decode("ascii", errors="replace"),
@@ -494,14 +513,14 @@ def analyze(root: Path, output: Path, *, extract: bool = True) -> dict[str, Any]
         "arm7_sha256": sha256(arm7),
         "arm9_overlay_count": len(overlays),
         "compressed_arm9_overlays": sum(1 for o in overlays if o.compressed),
-        "uncompressed_arm9_overlays": sum(1 for o in overlays if not o.compressed),
+        "decoded_arm9_overlays": len(overlays),
         "overlay_static_initializer_entries": len(initializer_rows),
         "ascii_strings_indexed": len(string_rows),
         "overlay_ram_overlap_groups": overlap,
-        "ghidra_importable_programs": sum(1 for row in ghidra_rows if row["importable"]),
+        "ghidra_importable_programs": len(ghidra_rows),
         "notes": [
             "Overlay semantic purpose is not inferred from layout alone.",
-            "Compressed overlays are extracted verbatim and deliberately not marked Ghidra-importable yet.",
+            "BLZ overlays are decoded and validated against each overlay table RAM size before analysis.",
             "Each overlay should be analyzed as its own Ghidra program because multiple overlays can occupy the same RAM window at different times.",
         ],
     }
@@ -514,10 +533,11 @@ def analyze(root: Path, output: Path, *, extract: bool = True) -> dict[str, Any]
     print(f"ARM7 entry: 0x{arm7_entry:08X} @ 0x{arm7_ram:08X}, {arm7_size} bytes")
     print(f"ARM9 overlays: {len(overlays)}")
     print(f"compressed ARM9 overlays: {summary['compressed_arm9_overlays']}")
-    print(f"uncompressed ARM9 overlays: {summary['uncompressed_arm9_overlays']}")
+    print(f"successfully decoded ARM9 overlays: {summary['decoded_arm9_overlays']}")
     print(f"static initializer pointers indexed: {len(initializer_rows)}")
     print(f"ASCII strings indexed: {len(string_rows)}")
     print(f"overlay RAM overlap groups: {len(overlap)}")
+    print(f"Ghidra-importable programs: {len(ghidra_rows)}")
     print(f"analysis output: {output}")
     return summary
 
