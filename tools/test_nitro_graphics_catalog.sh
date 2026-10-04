@@ -31,8 +31,13 @@ summary = json.loads((preview_dir / "summary.json").read_text(encoding="utf-8"))
 if summary["resources_inspected"] != len(resources) or len(inspections) != len(resources):
     raise SystemExit("renderer did not inspect every graphics catalogue resource")
 if summary["resource_parse_errors"] != 0:
-    failures = [row for row in inspections if row["parse_status"] != "ok"][:10]
-    raise SystemExit(f"retail Nitro resources have parse errors: {failures}")
+    failures = [row for row in inspections if row["parse_status"] != "ok"]
+    grouped = Counter((row["kind"], row["error"]) for row in failures)
+    print("retail Nitro parse-error groups:", file=sys.stderr)
+    for (kind, error), count in grouped.most_common():
+        example = next(row["logical_path"] for row in failures if row["kind"] == kind and row["error"] == error)
+        print(f"  {count:5d}  {kind:4s}  {error}  example={example}", file=sys.stderr)
+    raise SystemExit(f"retail Nitro resources have {len(failures)} parse errors")
 if summary["resources_parsed"] != len(resources):
     raise SystemExit("renderer did not parse every graphics catalogue resource")
 expected = Counter(row["kind"] for row in resources)
