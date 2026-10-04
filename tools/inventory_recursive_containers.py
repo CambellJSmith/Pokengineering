@@ -217,6 +217,7 @@ def plausible_lz10_header(data: bytes) -> bool:
 def inspect_payload(data: bytes) -> PayloadInspection:
     detected_format, magic_offset = identify_format(data)
     decoded_format = ""
+    decoded_magic_offset: int | None = None
     decoded_size: int | None = None
     decoded_data: bytes | None = None
     decode_error = ""
@@ -228,17 +229,28 @@ def inspect_payload(data: bytes) -> PayloadInspection:
             decode_error = str(error)
         else:
             decoded_size = len(decoded_data)
-            decoded_format, _ = identify_format(decoded_data)
+            decoded_format, decoded_magic_offset = identify_format(decoded_data)
             detected_format = "Nintendo LZ10"
             magic_offset = 0
 
     candidate = decoded_data if decoded_data is not None else data
+    candidate_format = decoded_format if decoded_data is not None else detected_format
+    candidate_magic_offset = decoded_magic_offset if decoded_data is not None else magic_offset
+
     if candidate.startswith(ACF_MAGIC):
         container_kind = "ACF"
         container_data = candidate
     elif candidate.startswith(NARC_MAGIC):
         container_kind = "NARC"
         container_data = candidate
+    elif candidate_format == "embedded ACF archive" and candidate_magic_offset is not None and candidate_magic_offset > 0:
+        embedded = candidate[candidate_magic_offset:]
+        container_kind = "ACF" if embedded.startswith(ACF_MAGIC) else ""
+        container_data = embedded if container_kind else None
+    elif candidate_format == "embedded NARC archive" and candidate_magic_offset is not None and candidate_magic_offset > 0:
+        embedded = candidate[candidate_magic_offset:]
+        container_kind = "NARC" if embedded.startswith(NARC_MAGIC) else ""
+        container_data = embedded if container_kind else None
     else:
         container_kind = ""
         container_data = None
