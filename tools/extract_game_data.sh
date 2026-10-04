@@ -74,5 +74,6 @@ printf 'recursive catalogue: %s\n' "$analysis_dir/recursive_catalog.csv" # Repor
 printf 'recursive summary: %s\n' "$analysis_dir/recursive_summary.json" # Report recursive container and format totals.
 printf 'graphics resources: %s\n' "$graphics_dir/resources.csv" # Report every exported graphics resource and stable logical path.
 printf 'graphics parent groups: %s\n' "$graphics_dir/parent_groups.csv" # Report exact same-container graphics neighborhoods.
+printf 'graphics adjacent pairs: %s\n' "$graphics_dir/adjacent_pairs.csv" # Report exact adjacent graphics slot edges without semantic guesses.
 printf 'graphics adjacent runs: %s\n' "$graphics_dir/adjacent_runs.csv" # Report exact contiguous graphics runs without semantic guesses.
 printf 'graphics summary: %s\n' "$graphics_dir/summary.json" # Report deterministic graphics totals and verification state.
