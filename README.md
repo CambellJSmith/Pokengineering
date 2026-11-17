@@ -800,7 +800,7 @@ Important quirks:
 
 Statically, every capture source is now located and extracted (`docs/scene_system.md` sections 4–6). Next:
 
-1. **Refine the capture database.** v1 exists: `python3 tools/build_capture_database.py` → `research/capture/capture_database.csv` (2,868 rows: sky 20, scripted 299 targets, wild 2,549; 534 Ranger IDs = 304 species, all named via `tools/ranger_ids.py`). Open items: map non-`Mnn_ss_` script labels (`MQ…`, `C33EVENT…`, …) to maps/quests, and decode the placement condition fields so roaming variants can be deduplicated into definitions.
+1. **Refine the capture database.** v1 exists: `python3 tools/build_capture_database.py` → `research/capture/capture_database.csv` (2,868 rows: sky 20, scripted 299 targets, wild 2,549; 534 Ranger IDs = 304 species, all named via `tools/ranger_ids.py`). Map scripts are now resolved through MPPS (`rec+0xA + 8`, `docs/scene_system.md` §6d), giving 95 of 299 scripted targets a definite map. Open items: maps for the `C###` chapter/story scripts (204 targets, probably via the `ETDT` event tables), and decode the placement condition fields so roaming variants can be deduplicated into definitions.
 2. The 1,581 unnamed wild placements are all in the **multiplayer** placement set (entries 7707–8130, base `0x1E1B`, selected by `CCommuContext`). They matter for Capture Select only if co-op captures are wanted; their map index comes from runtime quest data `0x020B8A92`.
 3. Work out what distinguishes variant Ranger IDs of the same species (`FPKD`/`CPOK` fields: HP, difficulty, behaviour).
 4. Optional dynamic confirmation: `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon, and expect `[CAP_ADD] dex=…` and scenes `1 → 0x29 → 2 → 0x1B → 1`.

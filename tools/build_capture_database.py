@@ -31,6 +31,35 @@ def read(name):
         return list(csv.DictReader(fh))
 
 
+ACF = ROOT / "work" / "game_acf" / "source_data_game_us.acf"
+MPPS = ROOT / "work" / "game_acf" / "archive" / "2482.MPPS"
+
+
+def script_maps():
+    """ACF byte offset of a script -> set of single-player maps whose map script
+    it is. Map script resource = MPPS rec+0x0A + 8 (ov2 0x020D6800;
+    multiplayer uses + 0xEE). Resource ID == ACF entry index."""
+    import struct
+    if not (ACF.exists() and MPPS.exists()):
+        return {}
+    d = ACF.read_bytes()
+    base, n = struct.unpack_from("<II", d, 8)
+    entry_off = {}
+    for i in range(n):
+        o = struct.unpack_from("<I", d, 0x20 + 12 * i)[0]
+        if o != 0xFFFFFFFF:
+            entry_off[i] = base + o
+    m = MPPS.read_bytes()
+    rs, cnt = struct.unpack_from("<II", m, 4)
+    out = collections.defaultdict(set)
+    for i in range(cnt):
+        r = m[0x10 + rs * i:0x10 + rs * (i + 1)]
+        v = struct.unpack_from("<H", r, 0xA)[0]
+        if v != 0xFFFF and (v + 8) in entry_off:
+            out[entry_off[v + 8]].add(f"m{r[1]:03d}_{r[2]:02d}")
+    return out
+
+
 def label_map(label):
     m = re.match(r"^M(\d+)_(\d+)_", label or "")
     return f"m{int(m.group(1)):03d}_{int(m.group(2)):02d}" if m else ""
@@ -52,6 +81,7 @@ def main():
             "note": "sky capture via 1C10 -> CSkyCaptureBeforeState",
         })
 
+    smaps = script_maps()
     wild = read("wild_spawns_2026-11-17.csv")
     wild_index = collections.defaultdict(list)
     by_id = collections.defaultdict(list)
@@ -67,6 +97,9 @@ def main():
         for t in filter(None, r["targets"].split(" | ")):
             rid = int(t.split(":")[0].split(",")[0])
             mp = label_map(r["label"])
+            owner = smaps.get(int(r["acf_offset"], 16), set())
+            if not mp and len(owner) == 1:
+                mp = next(iter(owner))      # the script is this map's map script
             linked = wild_index.get((mp, rid), [])
             how = "same_map"
             if not linked:

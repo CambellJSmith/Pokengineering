@@ -297,6 +297,22 @@ Cross-check: `m002_00`'s placements include Ranger IDs 362/414/415/419/63,
 which are exactly the targets of the scripted captures `M02_00_BT473/157/160/245/131`.
 Those placements have `f2 = 2/3`, while plain roaming ones have `f2 = 0`.
 
+## 6d. Which map owns a script
+
+The ACF index is `0x20` header, then 9,689 × 12-byte entries `{offset, size, size}` with
+data at `0x1C64C`; **resource ID = ACF entry index**. Map info (`0x0203F4A8`)
+copies MPPS `rec+0xA` → runtime `+0x64` and `rec+0xC` → `+0x66`. ov2
+`0x020D6800` loads the **map script** as resource `rec+0xA + 8`
+(multiplayer: `+ 0xEE`) and a second per-map resource as `rec+0xC + 0xEF`
+(multiplayer: `+ 0x1E5`).
+
+All 31 capture-bearing map scripts (entries 11–229: `M02_*`, `MQnn_*` quest
+events, `Mnn_P*`, `MPnn_WATEREN`, …) resolve to exactly one map. The 29
+`C###_*` scripts (entries ~1150–1200) are chapter/story scripts loaded
+elsewhere (probably through the `ETDT` event tables); their maps are still open.
+`tools/build_capture_database.py` applies this mapping: 95 of 299 scripted
+targets now have a definite map.
+
 ## 6c. Ranger Pokémon IDs → National Dex — solved
 
 Every capturable Pokémon, including per-encounter variants, has a **Ranger ID**
@@ -324,6 +340,8 @@ no Pokémon sprite, so they're special non-Pokémon targets.
 > needs an in-game recheck. The script/offset facts themselves are unaffected.
 
 ## 6b. Still open
+
+0. Maps for the `C###` chapter/story scripts (204 scripted targets).
 
 1. Map names for the **multiplayer placement set** (entries 7707–8130, 1,581
    placements). `CCommuContext` (ov2 `0x0210E89C`) sets the selector byte, so

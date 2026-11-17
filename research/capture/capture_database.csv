@@ -2,31 +2,11 @@ definition_key,source,ranger_id,dex,name,map,candidate_map,label,trigger,x,z,par
 id101,field_script,101,166,Ledian,,,C025_EV001_1,script@0xBF0E8+0x3BD4,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id107,field_script,107,172,Pichu,,m000_00,C003_EV001_0,script@0x9B794+0x1B20,273,366,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id107,field_script,107,172,Pichu,,m000_00,C003_EV001_1,script@0x9B794+0x1DE8,273,366,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id109,field_script,109,173,Cleffa,,m027_00,MQ30_EV002,script@0x39B08+0x1F70,500,416,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id11,field_script,11,16,Pidgey,,,MQ09_EV004,script@0x308A8+0x758,,,CAP_FLAG2= CAP_START=,
-id11,field_script,11,16,Pidgey,,,MQ09_EV004,script@0x308A8+0x758,,,CAP_FLAG2= CAP_START=,
-id11,field_script,11,16,Pidgey,,,MQ09_EV004,script@0x308A8+0x758,,,CAP_FLAG2= CAP_START=,
 id11,field_script,11,16,Pidgey,,,C105_EV003,script@0xEC5B8+0x1450,,,CAP_START=,
 id114,field_script,114,178,Xatu,,m017_07,C018_EV005,script@0xAFC08+0x3504,227,164,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id126,field_script,126,189,Jumpluff,,m016_03,MQ51_EV002,script@0x39B08+0x342C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id126,field_script,126,189,Jumpluff,,m016_03,MQ51_EV002,script@0x39B08+0x342C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id126,field_script,126,189,Jumpluff,,m016_03,MQ51_EV002,script@0x39B08+0x342C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id126,field_script,126,189,Jumpluff,,m016_03,MQ51_EV002_2,script@0x39B08+0x3D4C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id126,field_script,126,189,Jumpluff,,m016_03,MQ51_EV002_2,script@0x39B08+0x3D4C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id126,field_script,126,189,Jumpluff,,m016_03,MQ51_EV002_2,script@0x39B08+0x3D4C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id127,field_script,127,190,Aipom,,,C011_EV000,script@0xA5338+0x14E4,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
-id128,field_script,128,191,Sunkern,,,MQ01_EV002_0,script@0x1D3A4+0xEE4,,,CAP_FLAG2= CAP_START=,
-id128,field_script,128,191,Sunkern,,,MQ01_EV002_0,script@0x1D3A4+0xEE4,,,CAP_FLAG2= CAP_START=,
-id128,field_script,128,191,Sunkern,,,MQ01_EV002_0,script@0x1D3A4+0xEE4,,,CAP_FLAG2= CAP_START=,
-id128,field_script,128,191,Sunkern,,,MQ01_EV002_0,script@0x1D3A4+0xEE4,,,CAP_FLAG2= CAP_START=,
-id128,field_script,128,191,Sunkern,,,MQ01_EV002_0,script@0x1D3A4+0xEE4,,,CAP_FLAG2= CAP_START=,
-id128,field_script,128,191,Sunkern,,,MQ01_EV002_0,script@0x1D3A4+0xEE4,,,CAP_FLAG2= CAP_START=,
-id132,field_script,132,194,Wooper,,m014_04,MQ41_AF002,script@0x2E17C+0x2450,236,198,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
-id132,field_script,132,194,Wooper,,m014_04,MQ41_AF002,script@0x2E17C+0x2450,236,198,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
 id135,field_script,135,197,Umbreon,,m025_00,C033_EV002,script@0xD01B8+0x34CC,359,147,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id137,field_script,137,199,Slowking,,,C031_EV003,script@0xCBAD0+0x2DF0,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
-id138,field_script,138,200,Misdreavus,,,MQ16_EV002,script@0x38144+0x1D84,,,CAP_FLAG2= CAP_START=,
-id138,field_script,138,200,Misdreavus,,,MQ16_EV002,script@0x38144+0x1D84,,,CAP_FLAG2= CAP_START=,
 id138,field_script,138,200,Misdreavus,,,C015_START,script@0xAC6D8+0x1788,,,CAP_154=1 CAP_FLAG2= CAP_START=,
 id138,field_script,138,200,Misdreavus,,,C015_START,script@0xAC6D8+0x1788,,,CAP_154=1 CAP_FLAG2= CAP_START=,
 id138,field_script,138,200,Misdreavus,,,C015_START,script@0xAC6D8+0x1788,,,CAP_154=1 CAP_FLAG2= CAP_START=,
@@ -37,7 +17,6 @@ id148,field_script,148,212,Scizor,,m002_02,C038_EV009,script@0xDB5E0+0x90DC,168,
 id148,field_script,148,212,Scizor,,m002_02,C038_EV009,script@0xDB5E0+0x90DC,168,393,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id148,field_script,148,212,Scizor,,m002_02,C038_EV009,script@0xDB5E0+0x90DC,168,393,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id148,field_script,148,212,Scizor,,m002_02,C038_EV009,script@0xDB5E0+0x90DC,168,393,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id152,field_script,152,215,Sneasel,,,MQ33_EV005,script@0x44548+0x2A1C,,,CAP_FLAG2= CAP_START=,
 id152,field_script,152,215,Sneasel,,,C028_EV003,script@0xC563C+0x3F9C,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
 id152,field_script,152,215,Sneasel,,,C042_EV006,script@0xE4FC4+0x8924,,,CAP_FLAG2= CAP_START=,
 id152,field_script,152,215,Sneasel,,,C042_EV006,script@0xE4FC4+0x8924,,,CAP_FLAG2= CAP_START=,
@@ -52,15 +31,10 @@ id157,field_script,157,221,Piloswine,,m031_09,C042_EV009,script@0xE4FC4+0xA1F4,2
 id16,field_script,16,18,Pidgeot,,,C039_EV006_0,script@0xDDFD0+0x5700,,,CAP_154=2 CAP_FLAG2= CAP_START=,
 id16,field_script,16,18,Pidgeot,,,C039_EV006_1,script@0xDDFD0+0x587C,,,CAP_154=2 CAP_FLAG2= CAP_START=,
 id16,field_script,16,18,Pidgeot,,,C039_EV006_2,script@0xDDFD0+0x59F8,,,CAP_154=2 CAP_FLAG2= CAP_START=,
-id161,field_script,161,224,Octillery,,,MQ39_EV004,script@0x412D4+0x590,,,CAP_FLAG2= CAP_START=,
-id163,field_script,163,226,Mantine,,,MP39_WATEREN,script@0x40E80+0x5CC,,,CAP_FLAG2= CAP_BGM=1 CAP_154=13 CAP_START=,
-id163,field_script,163,226,Mantine,,,MQ39_EV004,script@0x412D4+0x590,,,CAP_FLAG2= CAP_START=,
-id168,field_script,168,230,Kingdra,,,MP19_WATEREN,script@0x2A66C+0x190,,,CAP_FLAG2= CAP_START=,
 id168,field_script,168,230,Kingdra,,,C033_WATEREN,script@0xD01B8+0x90AC,,,CAP_FLAG2= CAP_154=13 CAP_BGM=1 CAP_START=,
 id168,field_script,168,230,Kingdra,,,C044_EV006,script@0xE9C70+0x2EB4,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id168,field_script,168,230,Kingdra,,,C044_EV006,script@0xE9C70+0x2EB4,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id170,field_script,170,231,Phanpy,,m023_01,C024_EV001,script@0xBBFD4+0x1884,606,364,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id176,field_script,176,237,Hitmontop,,m026_03,MQ34_EV002,script@0x499E4+0x1FEC,219,201,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id177,field_script,177,238,Smoochum,,m026_07,C028_EV002,script@0xC563C+0x3098,569,136,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id179,field_script,179,240,Magby,,m016_02,C031_EV008,script@0xCBAD0+0x6EAC,552,278,CAP_154=14 CAP_BGM=7 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id179,field_script,179,240,Magby,,m016_02,C031_EV008,script@0xCBAD0+0x6EAC,552,278,CAP_154=14 CAP_BGM=7 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
@@ -72,9 +46,7 @@ id186,field_script,186,244,Entei,,,C018_EV009,script@0xAFC08+0x5F7C,,,CAP_BGM=6 
 id187,field_script,187,245,Suicune,,,C026_EV016,script@0xC12AC+0xAB60,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=5,
 id19,field_script,19,26,Raichu,,,C028_EV003,script@0xC563C+0x3F9C,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
 id190,field_script,190,248,Tyranitar,,m023_08,C024_EV007,script@0xBBFD4+0x465C,240,153,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id191,field_script,191,249,Lugia,,,M21_P249,script@0x405D8+0xF70,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=19,
 id191,field_script,191,249,Lugia,,,C044_EV012_1,script@0xE9C70+0x5580,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=19,
-id192,field_script,192,250,Ho-Oh,,,M032_P250,script@0x4F3A0+0x358,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=11,
 id192,field_script,192,250,Ho-Oh,,,C038_SKYEND4,script@0xDB5E0+0x2098,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=11,
 id193,field_script,193,251,Celebi,,m014_01,C006_EV005,script@0x9F4C4+0x6B98,596,178,CAP_FLAG2= CAP_154=11 CAP_START_F=21,linked_wild=1 (unique_id)
 id194,field_script,194,252,Treecko,,m014_00,C031_AF008,script@0xCBAD0+0x7924,333,357,CAP_154=14 CAP_BGM=7 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
@@ -86,34 +58,20 @@ id194,field_script,194,252,Treecko,,m014_00,C031_AF008,script@0xCBAD0+0x7924,333
 id196,field_script,196,254,Sceptile,,m030_07,C035_START,script@0xD6250+0x1734,377,261,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id197,field_script,197,255,Torchic,,,C024_EV001,script@0xBBFD4+0x1884,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id197,field_script,197,255,Torchic,,,C024_EV005,script@0xBBFD4+0x39D0,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
-id198,field_script,198,256,Combusken,,m023_05,MQ30_EV002,script@0x39B08+0x1F70,535,386,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
 id198,field_script,198,256,Combusken,,m023_05,C024_EV005,script@0xBBFD4+0x39D0,535,386,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
 id199,field_script,199,257,Blaziken,,m023_11,C043_EV001,script@0xE85D0+0x27E8,578,285,CAP_154=4 CAP_BGM=2 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id2,field_script,2,2,Ivysaur,,m009_02,C010_EV002,script@0xA4044+0x36D4,705,455,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id2,field_script,2,2,Ivysaur,,m009_02,C105_EV003,script@0xEC5B8+0x1450,705,455,CAP_START=,linked_wild=1 (unique_id)
-id201,field_script,201,259,Marshtomp,,m023_06,MQ35_AF003,script@0x3E894+0x1BB0,262,259,CAP_FLAG2= CAP_154=13 CAP_BGM=1 CAP_START=,linked_wild=4 (unique_id)
-id202,field_script,202,260,Swampert,,m030_05,MQ53_AF003,script@0x3CE2C+0x43B8,186,255,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id204,field_script,204,262,Mightyena,,m015_04,MQ21_EV002_0,script@0x3B808+0x1BE0,150,241,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id204,field_script,204,262,Mightyena,,m015_04,MQ21_EV002_0,script@0x3B808+0x1BE0,150,241,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id204,field_script,204,262,Mightyena,,m015_04,MQ21_EV002_0,script@0x3B808+0x1BE0,150,241,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id213,field_script,213,282,Gardevoir,,,C038_EV006,script@0xDB5E0+0x6BA4,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
 id214,field_script,214,296,Makuhita,,,C021_EV001,script@0xB4C18+0x1D9C,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id214,field_script,214,296,Makuhita,,,C021_EV001,script@0xB4C18+0x1D9C,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id214,field_script,214,296,Makuhita,,,C021_EV001,script@0xB4C18+0x1D9C,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
-id216,field_script,216,302,Sableye,,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id216,field_script,216,302,Sableye,,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id216,field_script,216,302,Sableye,,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id216,field_script,216,302,Sableye,,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id216,field_script,216,302,Sableye,,m017_08,MQ35_EV002,script@0x3E894+0x142C,226,116,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id216,field_script,216,302,Sableye,,m017_08,MQ35_EV002,script@0x3E894+0x142C,226,116,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id216,field_script,216,302,Sableye,,m017_08,MQ35_EV002,script@0x3E894+0x142C,226,116,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id216,field_script,216,302,Sableye,,m017_08,C018_EV006,script@0xAFC08+0x4290,226,116,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id217,field_script,217,304,Aron,,,C011_EV003,script@0xA5338+0x4D80,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id217,field_script,217,304,Aron,,,C011_EV003,script@0xA5338+0x4D80,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id218,field_script,218,305,Lairon,,m011_03,C011_EV003,script@0xA5338+0x4D80,867,729,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id219,field_script,219,306,Aggron,,,C038_EV005,script@0xDB5E0+0x60F4,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
 id219,field_script,219,306,Aggron,,,C038_EV005,script@0xDB5E0+0x60F4,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
-id22,field_script,22,37,Vulpix,,,MQ21_EV002_0,script@0x3B808+0x1BE0,,,CAP_FLAG2= CAP_START=,
 id221,field_script,221,310,Manectric,,,C042_EV008,script@0xE4FC4+0x95D0,,,CAP_FLAG2= CAP_START=,
 id221,field_script,221,310,Manectric,,,C042_EV008,script@0xE4FC4+0x95D0,,,CAP_FLAG2= CAP_START=,
 id225,field_script,225,319,Sharpedo,,,C007_EV008,script@0xA12E4+0x395C,,,CAP_154=1 CAP_FLAG2= CAP_START=,
@@ -123,16 +81,12 @@ id230,field_script,230,344,Claydol,,,C031_EV007,script@0xCBAD0+0x5738,,,CAP_BGM=
 id230,field_script,230,344,Claydol,,,C031_EV007,script@0xCBAD0+0x5738,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
 id230,field_script,230,344,Claydol,,,C031_EV007,script@0xCBAD0+0x5738,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
 id230,field_script,230,344,Claydol,,,C031_EV007,script@0xCBAD0+0x5738,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
-id231,field_script,231,347,Anorith,,m030_04,MQ35_AF003,script@0x3E894+0x1BB0,767,335,CAP_FLAG2= CAP_154=13 CAP_BGM=1 CAP_START=,linked_wild=4 (unique_id)
 id231,field_script,231,347,Anorith,,m030_04,C031_EV005,script@0xCBAD0+0x411C,767,335,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
 id231,field_script,231,347,Anorith,,m030_04,C031_EV005,script@0xCBAD0+0x411C,767,335,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
-id232,field_script,232,348,Armaldo,,m030_04,MQ53_AF003,script@0x3CE2C+0x43B8,461,671,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id232,field_script,232,348,Armaldo,,m030_04,C033_EV002,script@0xD01B8+0x34CC,461,671,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id236,field_script,236,359,Absol,,m005_06,C037_EV009,script@0xD8A10+0x6A68,243,228,CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id240,field_script,240,366,Clamperl,,m007_01,C007_EV005,script@0xA12E4+0x236C,516,876,CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
 id243,field_script,243,369,Relicanth,,m028_00,C026_WATEREN,script@0xC12AC+0x7834,330,262,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id244,field_script,244,370,Luvdisc,,,MQ07_EV002,script@0x2A330+0x2F4,,,CAP_FLAG2= CAP_START=,
-id248,field_script,248,374,Beldum,,m011_02,MQ23_EV002,script@0x30D3C+0x68C,329,364,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id248,field_script,248,374,Beldum,,m011_02,C031_AF008_1,script@0xCBAD0+0x86F0,329,364,CAP_154=14 CAP_BGM=7 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id248,field_script,248,374,Beldum,,m011_02,C031_AF008_1,script@0xCBAD0+0x86F0,329,364,CAP_154=14 CAP_BGM=7 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id248,field_script,248,374,Beldum,,m011_02,C031_AF008_1,script@0xCBAD0+0x86F0,329,364,CAP_154=14 CAP_BGM=7 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
@@ -145,13 +99,11 @@ id249,field_script,249,375,Metang,,,C033_EV003,script@0xD01B8+0x4EC0,,,CAP_FLAG2
 id250,field_script,250,376,Metagross,,,C034_EV006_2,script@0xD2F68+0x8EE0,,,CAP_BGM=2 CAP_154=5 CAP_FLAG2= CAP_START_F=10,
 id257,field_script,257,389,Torterra,,m002_01,C035_START,script@0xD6250+0x1734,787,500,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id261,field_script,261,392,Infernape,,m026_05,C028_EV003_1,script@0xC563C+0x5660,258,198,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id262,field_script,262,393,Piplup,,m009_02,M36_Q01_BF03,script@0x512E0+0x3884,172,326,CAP_FLAG2= CAP_BGM=7 CAP_154=12 CAP_START=,linked_wild=1 (unique_id)
 id262,field_script,262,393,Piplup,,m009_02,C008_EV003,script@0xA27A8+0x2464,172,326,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id265,field_script,265,395,Empoleon,,m026_09,C028_EV003,script@0xC563C+0x3F9C,251,284,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
 id265,field_script,265,395,Empoleon,,m026_09,C042_EV005,script@0xE4FC4+0x7D6C,251,284,CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
 id265,field_script,265,395,Empoleon,,m026_09,C042_EV005,script@0xE4FC4+0x7D6C,251,284,CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
 id269,field_script,269,397,Staravia,,,C150_START,script@0xED7AC+0x22C,,,CAP_FLAG2= CAP_START=,
-id272,field_script,272,399,Bidoof,,m009_02,MQ27_EV003,script@0x253C0+0x1E44,446,115,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id273,field_script,273,400,Bibarel,,,C018_EV006,script@0xAFC08+0x4290,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
 id278,field_script,278,405,Luxray,,m031_00,C034_EV006_1,script@0xD2F68+0x878C,353,199,CAP_FLAG2= CAP_BGM=7 CAP_154=12 CAP_START=,linked_wild=1 (unique_id)
 id278,field_script,278,405,Luxray,,m031_00,C034_EV006_1,script@0xD2F68+0x878C,353,199,CAP_FLAG2= CAP_BGM=7 CAP_154=12 CAP_START=,linked_wild=1 (unique_id)
@@ -161,8 +113,6 @@ id282,field_script,282,408,Cranidos,,m005_00,C005_EV004,script@0x9D74C+0x4D48,83
 id283,field_script,283,409,Rampardos,,,C021_EV005,script@0xB4C18+0x33E4,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id283,field_script,283,409,Rampardos,,,C021_EV005,script@0xB4C18+0x33E4,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id285,field_script,285,411,Bastiodon,,m030_12,C033_EV003,script@0xD01B8+0x4EC0,238,156,CAP_FLAG2= CAP_154=12 CAP_BGM=7 CAP_START=,linked_wild=2 (unique_id)
-id288,field_script,288,416,Vespiquen,,m025_02,MQ40_EV002,script@0x48030+0x878,361,116,CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id288,field_script,288,416,Vespiquen,,m025_02,MQ40_EV002,script@0x48030+0x878,361,116,CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id288,field_script,288,416,Vespiquen,,m025_02,C039_EV006_0,script@0xDDFD0+0x5700,361,116,CAP_154=2 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id288,field_script,288,416,Vespiquen,,m025_02,C039_EV006_1,script@0xDDFD0+0x587C,361,116,CAP_154=2 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id288,field_script,288,416,Vespiquen,,m025_02,C039_EV006_2,script@0xDDFD0+0x59F8,361,116,CAP_154=2 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
@@ -172,10 +122,6 @@ id299,field_script,299,424,Ambipom,,m017_09,C018_EV002,script@0xAFC08+0x13C0,221
 id302,field_script,302,426,Drifblim,,,C039_EV006_0,script@0xDDFD0+0x5700,,,CAP_154=2 CAP_FLAG2= CAP_START=,
 id302,field_script,302,426,Drifblim,,,C039_EV006_1,script@0xDDFD0+0x587C,,,CAP_154=2 CAP_FLAG2= CAP_START=,
 id302,field_script,302,426,Drifblim,,,C039_EV006_2,script@0xDDFD0+0x59F8,,,CAP_154=2 CAP_FLAG2= CAP_START=,
-id303,field_script,303,427,Buneary,,m026_00,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
-id303,field_script,303,427,Buneary,,m026_00,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
-id303,field_script,303,427,Buneary,,m026_00,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
-id303,field_script,303,427,Buneary,,m026_00,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
 id313,field_script,313,435,Skuntank,,m005_02,C011_EV000,script@0xA5338+0x14E4,249,194,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id314,field_script,314,436,Bronzor,,m017_04,C018_EV006,script@0xAFC08+0x4290,734,420,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id316,field_script,316,437,Bronzong,,,C033_EV002,script@0xD01B8+0x34CC,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
@@ -188,15 +134,9 @@ id324,field_script,324,444,Gabite,,,C125_START,script@0xECFF0+0x860,,,CAP_START=
 id324,field_script,324,444,Gabite,,,C125_START,script@0xECFF0+0x860,,,CAP_START=,
 id325,field_script,325,445,Garchomp,,,C031_EV009_1,script@0xCBAD0+0xC9A0,,,CAP_BGM=2 CAP_154=5 CAP_FLAG2= CAP_START_F=7,
 id327,field_script,327,447,Riolu,,m030_01,C031_EV001,script@0xCBAD0+0xE5C,166,421,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
-id329,field_script,329,448,Lucario,,m030_03,MQ60_EV013,script@0x4DF58+0xFE4,339,165,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
-id33,field_script,33,56,Mankey,,,MQ16_EV002,script@0x38144+0x1D84,,,CAP_FLAG2= CAP_START=,
 id331,field_script,331,449,Hippopotas,,m031_05,C034_EV001_0,script@0xD2F68+0x1F54,511,385,CAP_FLAG2= CAP_154=13 CAP_BGM=1 CAP_START=,linked_wild=4 (unique_id)
-id335,field_script,335,453,Croagunk,,m004_01,MQ27_EV002,script@0x253C0+0x19CC,711,244,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id335,field_script,335,453,Croagunk,,m004_01,C005_EV002,script@0x9D74C+0x2594,711,244,CAP_FLAG2= CAP_154=13 CAP_BGM=1 CAP_START=,linked_wild=1 (unique_id)
-id34,field_script,34,57,Primeape,,,MQ37_EV002_1,script@0x47954+0x1810,,,CAP_ARENA=12 CAP_FLAG2= CAP_START=,
 id344,field_script,344,459,Snover,,,C028_EV002,script@0xC563C+0x3098,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
-id348,field_script,348,461,Weavile,,,MQ60_EV011,script@0x28DEC+0x327C,,,CAP_FLAG2= CAP_START=,
-id348,field_script,348,461,Weavile,,,MQ60_EV011,script@0x28DEC+0x327C,,,CAP_FLAG2= CAP_START=,
 id348,field_script,348,461,Weavile,,,C042_EV006,script@0xE4FC4+0x8924,,,CAP_FLAG2= CAP_START=,
 id348,field_script,348,461,Weavile,,,C042_EV006,script@0xE4FC4+0x8924,,,CAP_FLAG2= CAP_START=,
 id349,field_script,349,462,Magnezone,,m002_01,C034_EV006_0,script@0xD2F68+0x7BEC,364,585,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
@@ -214,19 +154,12 @@ id363,field_script,363,474,Porygon-Z,,,C038_EV008,script@0xDB5E0+0x7FCC,,,CAP_BG
 id363,field_script,363,474,Porygon-Z,,,C038_EV008,script@0xDB5E0+0x7FCC,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
 id364,field_script,364,475,Gallade,,,C038_EV006,script@0xDB5E0+0x6BA4,,,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,
 id367,field_script,367,478,Froslass,,m033_07,C042_EV005,script@0xE4FC4+0x7D6C,597,573,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id37,field_script,37,73,Tentacruel,,,MP39_WATEREN,script@0x40E80+0x5CC,,,CAP_FLAG2= CAP_BGM=1 CAP_154=13 CAP_START=,
-id37,field_script,37,73,Tentacruel,,,MQ39_EV004,script@0x412D4+0x590,,,CAP_FLAG2= CAP_START=,
 id37,field_script,37,73,Tentacruel,,,C033_EV011,script@0xD01B8+0x8880,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
 id372,field_script,372,486,Regigigas,,,C039_EV003,script@0xDDFD0+0x2E0C,,,CAP_BGM=4 CAP_154=8 CAP_FLAG2= CAP_START_F=13,
 id385,field_script,385,172,Pichu,,,C011_EV001,script@0xA5338+0x38E0,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id385,field_script,385,172,Pichu,,,C018_EV003,script@0xAFC08+0x232C,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
 id385,field_script,385,172,Pichu,,,C018_EV003,script@0xAFC08+0x232C,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
-id40,field_script,40,75,Graveler,,m010_00,MQ41_EV002,script@0x2E17C+0x19D0,316,147,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id40,field_script,40,75,Graveler,,m010_00,MQ41_EV002,script@0x2E17C+0x19D0,316,147,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id40,field_script,40,75,Graveler,,m010_00,C150_EV001,script@0xED7AC+0x428,316,147,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id42,field_script,42,76,Golem,,,MQ50_EV003,script@0x36FD4+0x1564,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
-id42,field_script,42,76,Golem,,,MQ50_EV003,script@0x36FD4+0x1564,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
-id42,field_script,42,76,Golem,,,MQ50_EV003,script@0x36FD4+0x1564,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id42,field_script,42,76,Golem,,,C042_EV003,script@0xE4FC4+0x717C,,,CAP_FLAG2= CAP_START=,
 id42,field_script,42,76,Golem,,,C042_EV003,script@0xE4FC4+0x717C,,,CAP_FLAG2= CAP_START=,
 id42,field_script,42,76,Golem,,,C042_EV003,script@0xE4FC4+0x717C,,,CAP_FLAG2= CAP_START=,
@@ -249,7 +182,6 @@ id57,field_script,57,110,Weezing,,m023_01,C042_EV002,script@0xE4FC4+0x657C,588,1
 id57,field_script,57,110,Weezing,,m023_01,C042_EV002,script@0xE4FC4+0x657C,588,174,CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
 id58,field_script,58,116,Horsea,,m007_01,C007_EV005,script@0xA12E4+0x236C,203,753,CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id59,field_script,59,117,Seadra,,m028_02,C026_WATEREN,script@0xC12AC+0x7834,293,246,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id60,field_script,60,123,Scyther,,m002_03,MQ30_EV002,script@0x39B08+0x1F70,286,153,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id60,field_script,60,123,Scyther,,m002_03,C024_EV010,script@0xBBFD4+0x73C8,286,153,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id60,field_script,60,123,Scyther,,m002_03,C024_EV010,script@0xBBFD4+0x73C8,286,153,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id63,field_script,63,131,Lapras,,m002_00,C007_START,script@0xA12E4+0xEF0,510,425,CAP_154=1 CAP_FLAG2= CAP_ARENA=9 CAP_START=,linked_wild=1 (unique_id)
@@ -258,11 +190,8 @@ id68,field_script,68,133,Eevee,,m015_01,C008_EV003,script@0xA27A8+0x2464,243,151
 id70,field_script,70,135,Jolteon,,,C034_EV004_0,script@0xD2F68+0x3D58,,,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,
 id73,field_script,73,140,Kabuto,,m030_05,C031_EV005,script@0xCBAD0+0x411C,757,310,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
 id73,field_script,73,140,Kabuto,,m030_05,C031_EV005,script@0xCBAD0+0x411C,757,310,CAP_BGM=7 CAP_154=12 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
-id75,field_script,75,144,Articuno,,,M026_P144,script@0x4BE40+0x3C8,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=18,
 id75,field_script,75,144,Articuno,,,C042_EV011,script@0xE4FC4+0xB84C,,,CAP_START_F=18,
-id78,field_script,78,145,Zapdos,,,M031_P145,script@0x4EE14+0x3BC,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=17,
 id78,field_script,78,145,Zapdos,,,C042_EV011,script@0xE4FC4+0xB860,,,CAP_START_F=17,
-id81,field_script,81,146,Moltres,,,M23_P146,script@0x42D40+0x3BC,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=16,
 id81,field_script,81,146,Moltres,,,C042_EV011,script@0xE4FC4+0xB838,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=16,
 id84,field_script,84,150,Mewtwo,,,C040_AF001,script@0xE18D4+0x5770,,,CAP_BGM=5 CAP_154=5 CAP_FLAG2= CAP_START_F=15,
 id86,field_script,86,150,Mewtwo,,,C040_START,script@0xE18D4+0x1808,,,CAP_BGM=3 CAP_154=9 CAP_FLAG2= CAP_START_F=15,
@@ -279,6 +208,12 @@ id414,field_script,414,157,Typhlosion,m002_00,,M02_00_BT157,script@0x1CCE8+0xB90
 id415,field_script,415,160,Feraligatr,m002_00,,M02_00_BT160,script@0x1CCE8+0xFC4,201,349,CAP_BGM=2 CAP_154=1 CAP_FLAG2= CAP_START_F=3,linked_wild=1 (same_map)
 id419,field_script,419,245,Suicune,m002_00,,M02_00_BT245,script@0x1CCE8+0x13F4,357,364,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=5,linked_wild=1 (same_map)
 id63,field_script,63,131,Lapras,m002_00,,M02_00_BT131,script@0x1CCE8+0x181C,510,425,CAP_ARENA=9 CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
+id128,field_script,128,191,Sunkern,m002_01,,MQ01_EV002_0,script@0x1D3A4+0xEE4,743,229,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id128,field_script,128,191,Sunkern,m002_01,,MQ01_EV002_0,script@0x1D3A4+0xEE4,743,229,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id128,field_script,128,191,Sunkern,m002_01,,MQ01_EV002_0,script@0x1D3A4+0xEE4,743,229,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id128,field_script,128,191,Sunkern,m002_01,,MQ01_EV002_0,script@0x1D3A4+0xEE4,743,229,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id128,field_script,128,191,Sunkern,m002_01,,MQ01_EV002_0,script@0x1D3A4+0xEE4,743,229,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id128,field_script,128,191,Sunkern,m002_01,,MQ01_EV002_0,script@0x1D3A4+0xEE4,743,229,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
 id257,field_script,257,389,Torterra,m002_01,,M02_01_BT389,script@0x1D3A4+0x26A4,787,500,CAP_BGM=7 CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
 id349,field_script,349,462,Magnezone,m002_01,,M02_01_BT462,script@0x1D3A4+0x3348,364,585,CAP_BGM=7 CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
 id403,field_script,403,6,Charizard,m002_01,,M02_01_BT006,script@0x1D3A4+0x2F0C,582,129,CAP_BGM=2 CAP_154=1 CAP_FLAG2= CAP_START_F=4,linked_wild=1 (same_map)
@@ -298,6 +233,71 @@ id424,field_script,424,380,Latias,m002_03,,M02_03_BT380,script@0x1EABC+0x1728,72
 id425,field_script,425,381,Latios,m002_03,,M02_03_BT381,script@0x1EABC+0x12F0,639,611,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=9,linked_wild=1 (same_map)
 id426,field_script,426,445,Garchomp,m002_03,,M02_03_BT445,script@0x1EABC+0x1B60,477,720,CAP_BGM=2 CAP_154=1 CAP_FLAG2= CAP_START_F=7,linked_wild=1 (same_map)
 id60,field_script,60,123,Scyther,m002_03,,M02_03_BT123,script@0x1EABC+0x5E0,286,153,CAP_BGM=1 CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
+id272,field_script,272,399,Bidoof,m004_01,m009_02,MQ27_EV003,script@0x253C0+0x1E44,446,115,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id335,field_script,335,453,Croagunk,m004_01,,MQ27_EV002,script@0x253C0+0x19CC,711,244,CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
+id348,field_script,348,461,Weavile,m006_04,,MQ60_EV011,script@0x28DEC+0x327C,,,CAP_FLAG2= CAP_START=,
+id348,field_script,348,461,Weavile,m006_04,,MQ60_EV011,script@0x28DEC+0x327C,,,CAP_FLAG2= CAP_START=,
+id244,field_script,244,370,Luvdisc,m007_01,,MQ07_EV002,script@0x2A330+0x2F4,247,266,CAP_FLAG2= CAP_START=,linked_wild=6 (same_map)
+id168,field_script,168,230,Kingdra,m007_02,,MP19_WATEREN,script@0x2A66C+0x190,,,CAP_FLAG2= CAP_START=,
+id132,field_script,132,194,Wooper,m010_00,m014_04,MQ41_AF002,script@0x2E17C+0x2450,236,198,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
+id132,field_script,132,194,Wooper,m010_00,m014_04,MQ41_AF002,script@0x2E17C+0x2450,236,198,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=4 (unique_id)
+id40,field_script,40,75,Graveler,m010_00,,MQ41_EV002,script@0x2E17C+0x19D0,316,147,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id40,field_script,40,75,Graveler,m010_00,,MQ41_EV002,script@0x2E17C+0x19D0,316,147,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id11,field_script,11,16,Pidgey,m011_03,,MQ09_EV004,script@0x308A8+0x758,,,CAP_FLAG2= CAP_START=,
+id11,field_script,11,16,Pidgey,m011_03,,MQ09_EV004,script@0x308A8+0x758,,,CAP_FLAG2= CAP_START=,
+id11,field_script,11,16,Pidgey,m011_03,,MQ09_EV004,script@0x308A8+0x758,,,CAP_FLAG2= CAP_START=,
+id248,field_script,248,374,Beldum,m011_04,m011_02,MQ23_EV002,script@0x30D3C+0x68C,329,364,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id42,field_script,42,76,Golem,m014_01,,MQ50_EV003,script@0x36FD4+0x1564,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
+id42,field_script,42,76,Golem,m014_01,,MQ50_EV003,script@0x36FD4+0x1564,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
+id42,field_script,42,76,Golem,m014_01,,MQ50_EV003,script@0x36FD4+0x1564,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
+id138,field_script,138,200,Misdreavus,m014_03,,MQ16_EV002,script@0x38144+0x1D84,,,CAP_FLAG2= CAP_START=,
+id138,field_script,138,200,Misdreavus,m014_03,,MQ16_EV002,script@0x38144+0x1D84,,,CAP_FLAG2= CAP_START=,
+id33,field_script,33,56,Mankey,m014_03,,MQ16_EV002,script@0x38144+0x1D84,,,CAP_FLAG2= CAP_START=,
+id109,field_script,109,173,Cleffa,m016_03,m027_00,MQ30_EV002,script@0x39B08+0x1F70,500,416,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id126,field_script,126,189,Jumpluff,m016_03,,MQ51_EV002,script@0x39B08+0x342C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id126,field_script,126,189,Jumpluff,m016_03,,MQ51_EV002,script@0x39B08+0x342C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id126,field_script,126,189,Jumpluff,m016_03,,MQ51_EV002,script@0x39B08+0x342C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id126,field_script,126,189,Jumpluff,m016_03,,MQ51_EV002_2,script@0x39B08+0x3D4C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id126,field_script,126,189,Jumpluff,m016_03,,MQ51_EV002_2,script@0x39B08+0x3D4C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id126,field_script,126,189,Jumpluff,m016_03,,MQ51_EV002_2,script@0x39B08+0x3D4C,318,252,CAP_FLAG2= CAP_START=,linked_wild=2 (same_map)
+id198,field_script,198,256,Combusken,m016_03,m023_05,MQ30_EV002,script@0x39B08+0x1F70,535,386,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=3 (unique_id)
+id60,field_script,60,123,Scyther,m016_03,m002_03,MQ30_EV002,script@0x39B08+0x1F70,286,153,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id204,field_script,204,262,Mightyena,m017_03,m015_04,MQ21_EV002_0,script@0x3B808+0x1BE0,150,241,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id204,field_script,204,262,Mightyena,m017_03,m015_04,MQ21_EV002_0,script@0x3B808+0x1BE0,150,241,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id204,field_script,204,262,Mightyena,m017_03,m015_04,MQ21_EV002_0,script@0x3B808+0x1BE0,150,241,CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id22,field_script,22,37,Vulpix,m017_03,,MQ21_EV002_0,script@0x3B808+0x1BE0,,,CAP_FLAG2= CAP_START=,
+id202,field_script,202,260,Swampert,m018_00,m030_05,MQ53_AF003,script@0x3CE2C+0x43B8,186,255,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id216,field_script,216,302,Sableye,m018_00,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id216,field_script,216,302,Sableye,m018_00,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id216,field_script,216,302,Sableye,m018_00,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id216,field_script,216,302,Sableye,m018_00,m017_08,MQ53_EV003,script@0x3CE2C+0x34F8,226,116,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id232,field_script,232,348,Armaldo,m018_00,m030_04,MQ53_AF003,script@0x3CE2C+0x43B8,461,671,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,linked_wild=2 (unique_id)
+id201,field_script,201,259,Marshtomp,m018_03,m023_06,MQ35_AF003,script@0x3E894+0x1BB0,262,259,CAP_FLAG2= CAP_154=13 CAP_BGM=1 CAP_START=,linked_wild=4 (unique_id)
+id216,field_script,216,302,Sableye,m018_03,m017_08,MQ35_EV002,script@0x3E894+0x142C,226,116,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id216,field_script,216,302,Sableye,m018_03,m017_08,MQ35_EV002,script@0x3E894+0x142C,226,116,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id216,field_script,216,302,Sableye,m018_03,m017_08,MQ35_EV002,script@0x3E894+0x142C,226,116,CAP_154=13 CAP_BGM=1 CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id231,field_script,231,347,Anorith,m018_03,m030_04,MQ35_AF003,script@0x3E894+0x1BB0,767,335,CAP_FLAG2= CAP_154=13 CAP_BGM=1 CAP_START=,linked_wild=4 (unique_id)
+id191,field_script,191,249,Lugia,m021_00,,M21_P249,script@0x405D8+0xF70,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=19,
+id163,field_script,163,226,Mantine,m022_03,,MP39_WATEREN,script@0x40E80+0x5CC,,,CAP_FLAG2= CAP_BGM=1 CAP_154=13 CAP_START=,
+id37,field_script,37,73,Tentacruel,m022_03,,MP39_WATEREN,script@0x40E80+0x5CC,,,CAP_FLAG2= CAP_BGM=1 CAP_154=13 CAP_START=,
+id161,field_script,161,224,Octillery,m022_05,,MQ39_EV004,script@0x412D4+0x590,,,CAP_FLAG2= CAP_START=,
+id163,field_script,163,226,Mantine,m022_05,,MQ39_EV004,script@0x412D4+0x590,207,272,CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
+id37,field_script,37,73,Tentacruel,m022_05,,MQ39_EV004,script@0x412D4+0x590,,,CAP_FLAG2= CAP_START=,
+id81,field_script,81,146,Moltres,m023_09,,M23_P146,script@0x42D40+0x3BC,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=16,
+id152,field_script,152,215,Sneasel,m024_01,,MQ33_EV005,script@0x44548+0x2A1C,,,CAP_FLAG2= CAP_START=,
+id34,field_script,34,57,Primeape,m024_05,,MQ37_EV002_1,script@0x47954+0x1810,,,CAP_ARENA=12 CAP_FLAG2= CAP_START=,
+id288,field_script,288,416,Vespiquen,m025_02,,MQ40_EV002,script@0x48030+0x878,361,116,CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
+id288,field_script,288,416,Vespiquen,m025_02,,MQ40_EV002,script@0x48030+0x878,361,116,CAP_154=1 CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
+id176,field_script,176,237,Hitmontop,m025_04,m026_03,MQ34_EV002,script@0x499E4+0x1FEC,219,201,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
+id303,field_script,303,427,Buneary,m026_00,,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (same_map)
+id303,field_script,303,427,Buneary,m026_00,,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (same_map)
+id303,field_script,303,427,Buneary,m026_00,,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (same_map)
+id303,field_script,303,427,Buneary,m026_00,,MQ29_EV004,script@0x4A494+0xCD0,614,220,CAP_FLAG2= CAP_START=,linked_wild=3 (same_map)
+id75,field_script,75,144,Articuno,m026_11,,M026_P144,script@0x4BE40+0x3C8,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=18,
+id329,field_script,329,448,Lucario,m030_03,,MQ60_EV013,script@0x4DF58+0xFE4,339,165,CAP_FLAG2= CAP_START=,linked_wild=1 (same_map)
+id78,field_script,78,145,Zapdos,m031_07,,M031_P145,script@0x4EE14+0x3BC,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=17,
+id192,field_script,192,250,Ho-Oh,m032_00,,M032_P250,script@0x4F3A0+0x358,,,CAP_BGM=6 CAP_154=10 CAP_FLAG2= CAP_START_F=11,
+id262,field_script,262,393,Piplup,m036_00,m009_02,M36_Q01_BF03,script@0x512E0+0x3884,172,326,CAP_FLAG2= CAP_BGM=7 CAP_154=12 CAP_START=,linked_wild=1 (unique_id)
 id104,sky_1C10,104,169,Crobat,,,,script@0xFE688+0xA3C,,,"0x1C54(2, 0x68, 0) 1C35(7, 4) 1C36(?)",sky capture via 1C10 -> CSkyCaptureBeforeState
 id13,sky_1C10,13,16,Pidgey,,,,script@0xF844C+0xFC0,,,"0x1C54(8, 0xD, 0) 1C35(2, 0) 1C36(0x538)",sky capture via 1C10 -> CSkyCaptureBeforeState
 id14,sky_1C10,14,17,Pidgeotto,,,,script@0xF9094+0x1648,,,"0x1C12(0xE, 0, 3, 0x40, 0x80) 1C35(0xD, 1) 1C36(?)",sky capture via 1C10 -> CSkyCaptureBeforeState
