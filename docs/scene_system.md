@@ -426,51 +426,62 @@ are all a menu needs. A second run with `RANGER_ID=419` produced a SUICUNE
 boss capture (boss HP bar shown), so it works for arbitrary targets. (The arena is black with `+0x13E = 0xFFFF`; set a
 real arena ID for a background.)
 
-## 10. Capture Select v0 ROM patch
+## 10. Capture Select ROM patch (battle menu)
 
 Build:
 
 ```bash
 bash tools/build_debug_rom.sh                                   # base ROM
 python3 tools/build_capture_database.py                         # (if the DB changed)
-python3 tools/capture_select/build_patch.py                     # -> work/capture_select/*.json, list csv
+python3 tools/capture_select/build_patch.py                     # needs keystone-engine + console-setup-linux font
 python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \
     --patches work/capture_select/capture_select_patch.json \
     --output work/capture_select/capture_select.nds
 ```
 
-Controls on the title/demo screen: **SELECT** = capture the current list
-entry (then advance), **L+SELECT** = previous, **R+SELECT** = skip 10. The
-capture HUD names the target, and afterwards the game returns to the title
-(`0x2C`). The list holds the 533 real-Pokémon Ranger IDs from the capture
-database, ordered by Dex, with BGM/arena taken from the original script where
-known (`work/capture_select/capture_select_list.csv`).
+**Controls on the title/demo screen:** SELECT opens the **Capture Select**
+menu on the bottom screen. UP/DOWN move (hold to repeat), LEFT/RIGHT or L/R
+page by 20, **A** starts the highlighted battle and **B** closes the menu
+(the title reloads). After a battle the game returns to the title (`0x2C`).
 
-Implementation:
-- ov28 is grown. Its BSS (`0x11300`) is written into the file as zeros and a
-  cave is appended at `0x020EEA00` (= ram + ram_size + bss), so no existing
-  address moves; table `ram_size = 0x1D7A4`, `bss = 0`. This is safe because
-  the heap starts above the largest overlay (`0x0212CFC0`).
-- `Update` (vtable slot 2) of `CDemoScene` (`0x020DCE0C`) and
-  `CGameTitleScene` (`0x020DD688`) → wrapper at `0x020EEA00`. The wrapper calls
-  the original `0x020D20A4`, edge-detects KEYINPUT, then calls
-  `CaptureSetup_Clear` and `CaptureSetup_Add3`, writes BGM/arena/return scene
-  and returns `2`.
-- Persistent state: list index at `CaptureSetup+0x60`, previous keys at
-  `+0x64` (entry 7, unused with count 1 and untouched by Clear).
-- The overlay is stored uncompressed by `tools/patch_code_rom.py`
-  (`append_after_bss` support).
+**Menu entries (532)**, generated from `research/capture/capture_database.csv`
+(full list: `work/capture_select/capture_select_list.csv`):
+- every distinct scripted field capture, with all of its targets (up to 7),
+  BGM and arena from the original script, labelled with the event
+  (e.g. `006 Sharpedo x2 C007_EV008`, `007 Lapras C007_START`);
+- every sky (1C10) capture (`... SKY`);
+- every remaining wild Ranger ID (`... WILD m010_02`, or `co-op` for the
+  multiplayer set).
 
-Verified in the emulator (`tools/emu/test_capture_select_rom.py`): an injected
-SELECT on the patched ROM produced `CaptureSetup: count=1 id=1 bgm=0
-arena=0xffff ret=0x2c idx_next=1`, overlay 3 loaded, and a BULBASAUR capture
-battle ran. The loop test (`test_capture_select_loop.py`) checks the return to
-the title and the index persisting.
+**Implementation** (`tools/capture_select/build_patch.py`):
+- ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020F76AC`
+  (code + strings ≈1.2 KB, 8×8 font 768 B from `Lat15-VGA8`, 532 × 64-byte
+  battle records). It stays below the heap (`0x0212CFC0`).
+- `Update` (vtable slot 2) of `CDemoScene`/`CGameTitleScene` → wrapper.
+  When the menu is closed, the original Update runs unless SELECT is newly
+  pressed. While it's open, the title logic is skipped. Every frame the
+  wrapper re-asserts engine A (bottom screen) in mode 5 with BG3 as a 256×192
+  direct-colour bitmap in VRAM bank C (`VRAMCNT_C = 0x89` → main BG
+  `0x06020000`; bank C is unused on the title, and the original value is
+  restored on exit), handles input, and redraws only when the selection
+  changes.
+- A: `CaptureSetup_Clear`, `CaptureSetup_Add3` for each target, BGM `+0x13C`,
+  arena `+0x13E`, return scene `+0x144 = 0x2C`; returns scene `2`.
+- Menu state is in `CaptureSetup` entry 7 (`+0x60` index, `+0x62` top,
+  `+0x64` previous keys, `+0x66` open, `+0x67` dirty, `+0x68` saved VRAMCNT_C,
+  `+0x69` key-repeat counter). That entry is unused for ≤7 targets and
+  isn't touched by Clear.
+- Keystone pitfall: a conditional `bl` to a forward label assembled as a
+  branch-to-self (hung the menu). The builder now rejects any self-branch.
 
-Known limits (v0): no on-screen list (the capture HUD is the feedback);
-the arena defaults to a black background unless the script set one; and
-finishing a capture from the title hasn't been exercised with real input
-(result/browser states may touch save data).
+**Verified** in headless DeSmuME (`tools/emu/test_capture_select_menu.py`,
+keys injected at the wrapper's `mvn r5, r5`, `0x020EEA20`):
+SELECT draws the menu; DOWN ×3 moves the highlight to `004 Celebi C006_EV005`;
+A loads `CaptureSetup count=1 ids=[193] ret=0x2C` and a CELEBI boss capture
+runs.
+
+**Not yet verified:** finishing a capture with real input (result/browser
+states may touch save data); real hardware/flashcarts.
 
 ## 8. Consequence for Capture Select
 
