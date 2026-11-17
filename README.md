@@ -864,4 +864,4 @@ python3 tools/scene_map.py --csv research/capture/scene_table.csv
 
 ## Final stopping point — 2026-11-17
 
-> **Capture Select is proven in the emulator:** filling `CaptureSetup` (`0x020B797C`) and returning scene `2` from the title scene starts a normal capture of any Ranger ID. Every capture source is extracted and named (`research/capture/capture_database.csv`). Next: turn the PoC into a real ROM patch (a menu entry/scene that does the same thing, via `tools/patch_code_rom.py`), choosing arena/BGM per database entry.
+> **Capture Select has a real menu:** in the patched ROM, SELECT on the title screen opens an on-screen list of 532 battles (every scripted capture event with its full target group, every sky capture, every wild Pokémon). A starts the chosen battle, and the game returns to the title afterwards. Verified in headless DeSmuME. Next: test a fully completed capture with real input, then polish (arena backgrounds, nicer names).
