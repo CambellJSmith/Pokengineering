@@ -426,6 +426,52 @@ are all a menu needs. A second run with `RANGER_ID=419` produced a SUICUNE
 boss capture (boss HP bar shown), so it works for arbitrary targets. (The arena is black with `+0x13E = 0xFFFF`; set a
 real arena ID for a background.)
 
+## 10. Capture Select v0 ROM patch
+
+Build:
+
+```bash
+bash tools/build_debug_rom.sh                                   # base ROM
+python3 tools/build_capture_database.py                         # (if the DB changed)
+python3 tools/capture_select/build_patch.py                     # -> work/capture_select/*.json, list csv
+python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \
+    --patches work/capture_select/capture_select_patch.json \
+    --output work/capture_select/capture_select.nds
+```
+
+Controls on the title/demo screen: **SELECT** = capture the current list
+entry (then advance), **L+SELECT** = previous, **R+SELECT** = skip 10. The
+capture HUD names the target, and afterwards the game returns to the title
+(`0x2C`). The list holds the 533 real-Pokémon Ranger IDs from the capture
+database, ordered by Dex, with BGM/arena taken from the original script where
+known (`work/capture_select/capture_select_list.csv`).
+
+Implementation:
+- ov28 is grown. Its BSS (`0x11300`) is written into the file as zeros and a
+  cave is appended at `0x020EEA00` (= ram + ram_size + bss), so no existing
+  address moves; table `ram_size = 0x1D7A4`, `bss = 0`. This is safe because
+  the heap starts above the largest overlay (`0x0212CFC0`).
+- `Update` (vtable slot 2) of `CDemoScene` (`0x020DCE0C`) and
+  `CGameTitleScene` (`0x020DD688`) → wrapper at `0x020EEA00`. The wrapper calls
+  the original `0x020D20A4`, edge-detects KEYINPUT, then calls
+  `CaptureSetup_Clear` and `CaptureSetup_Add3`, writes BGM/arena/return scene
+  and returns `2`.
+- Persistent state: list index at `CaptureSetup+0x60`, previous keys at
+  `+0x64` (entry 7, unused with count 1 and untouched by Clear).
+- The overlay is stored uncompressed by `tools/patch_code_rom.py`
+  (`append_after_bss` support).
+
+Verified in the emulator (`tools/emu/test_capture_select_rom.py`): an injected
+SELECT on the patched ROM produced `CaptureSetup: count=1 id=1 bgm=0
+arena=0xffff ret=0x2c idx_next=1`, overlay 3 loaded, and a BULBASAUR capture
+battle ran. The loop test (`test_capture_select_loop.py`) checks the return to
+the title and the index persisting.
+
+Known limits (v0): no on-screen list (the capture HUD is the feedback);
+the arena defaults to a black background unless the script set one; and
+finishing a capture from the title hasn't been exercised with real input
+(result/browser states may touch save data).
+
 ## 8. Consequence for Capture Select
 
 A main-menu "Capture Select" can work at the **scene level**:
