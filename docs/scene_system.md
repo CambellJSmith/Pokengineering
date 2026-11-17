@@ -1,5 +1,9 @@
 # Scene system and the ordinary capture route (static analysis, 2026-11-17)
 
+> Summary: every field capture fills the resident `CaptureSetup` at
+> `0x020B797C`, runs script `sToCapture`, which sets field state 3, then
+> goes through scene `0x29` → scene `2`. Sections 4–5 have the details.
+
 This document records the static reverse-engineering that resolved the
 "ordinary overworld encounter → normal capture launcher → `CCaptureScene`"
 question left open in the 2026-10-04 handoff.
@@ -151,21 +155,116 @@ for the capture *definition* database.
 `{resId, -1, 0x4C}` entries, where `resId = 0x6B7 + speciesRecord.field_C`, and
 loads them into actor-data manager `0x0211E4DC`. It doesn't choose the target.
 
-## 4. Still open
+## 4. Capture setup struct `0x020B797C` (resident BSS) — solved
 
-1. **Which resident structure carries the target Pokémon list** from the
-   field (ov2 `CFieldWildPokemon`) into `CCapturePokemonManage` (ov3).
-   Candidates: the transition block `0x020B7A7C` (field writes
-   `+0x3C/+0x3E/+0x40/+0x42/+0x54/+0x56`, ov3 reads `+0x3C/+0x42`),
-   `0x020B797C`, and `0x020B7954` (an ARM9 manager the field calls through its
-   vtable at ov2 `0x020D8388`). **(dynamic: TODO)**
-2. Who sets field pending state 3 (no direct `str` to `+0x1F18` outside init).
-   Break at ov2 `0x020D34C8`, where pending state is applied, with
-   `r5 == 3` and look at the field state that ran just before. **(dynamic: TODO)**
-3. Label states 1..12 of `CCaptureScene` (only Result/AddBrowser/
+`CCaptureContext::Init` builds the capture Pokémon array with
+`__construct_new_array(count = [0x020B797C], 0x3FF8, ctor 0x020EE5D4)`, so this
+struct is what carries the targets across the ov2 → ov22 → ov3 swap.
+
+```text
+0x020B797C  CaptureSetup
+  +0x000 u32   count                         (0 is treated as 1)
+  +0x004 u32   = 1
+  +0x008 u8
+  +0x00C entry[count], stride 0xC:
+         +0 u32  a        (wild: CFieldWildPokemon+0x08)
+         +4 u16  pokemonId  National Dex number (names: localization 0268)
+         +6 u16  b        (wild: kind from +0x85F, 2 if a save flag is set)
+         +8 u16  c
+  +0x06C 4 x 0x34-byte player/styler records (copied from save 0x020BD32C)
+  +0x13C u16   BGM kind 0..10                 (= "request block" 0x020B7AB8)
+  +0x13E u16   arena/BG (0xFFFF -> field picks one)
+  +0x140 u16
+  +0x142 u16   flags (bit0, bit1, bit2 set by script commands; ov3 reads)
+  +0x144 u32   return scene ID (= request+8, 0x020B7AC0): Clear sets 1,
+               CFieldToCaptureState sets 0x1B (CCaptureToFieldScene)
+  +0x148 u32 = 1, +0x14C u8, +0x150 u32
+  +0x154 u16, +0x156 u16
+  +0x15C u32   capture result (read back by script command 0x0CAF)
+```
+
+The ARM9 API (all resident):
+
+| address | function |
+|---|---|
+| `0x020418D4` | `CaptureSetup_Clear(setup)` |
+| `0x02041998` | `CaptureSetup_Add(setup, pokemonId, u32 a, u16 b, u16 c)` |
+| `0x020419D0` | `CaptureSetup_Add(setup, pokemonId, b)` |
+
+ov3 reads `entry.pokemonId` at `0x020D22CC` and maps it through the species
+data table `0x020B7C78` (`record+0xE`, `record+0xC` → actor resource
+`0x6B7 + n`).
+
+## 5. What actually triggers a field capture — solved
+
+Field state machine (ov2): context pointer `*0x021260E0`, current state
+`+0x1F14`, pending state `+0x1F18`, resolver vfunc `+0x38` = `0x020D8404`.
+
+| field state | singleton | class |
+|---|---|---|
+| 3 | `0x02128AE0` | `CFieldToCaptureState` (P variant `0x02128AE8`) |
+| 7 | `0x02128C10` | `CFieldAuthoringEventState` (event/cutscene runner) |
+
+There are two entry points, and both converge on the same common script function:
+
+```text
+A) WILD CONTACT  ov2 0x020D5780 (inside field update 0x020D51AC)
+   when ctx+0x1F24 bit1 && current state == 1 && no pending state
+        && ctx+0x1F28 = touched CFieldWildPokemon:
+     CaptureSetup_Clear; CaptureSetup_Add(wild+0x85C dex, wild+0x08, kind)
+     play SE 0x55/0x54, queue script "sToCapture", pending state = 7
+
+B) SCRIPTED      field VM group 3 (table ov2 0x02125860):
+     0x0CA2 CAP_CLEAR, 0x0CA5/0x0CA6 CAP_ADD, 0x0CA7 BGM, 0x0CB0 arena, ...
+     0x0CAD/0x0CAE CAP_START -> CFieldAuthoringEventState +0xCC = 0xC
+       -> mode 0xC: play SE 0x55/0x54, run script "sToCapture", mode 7
+
+sToCapture  (common field script, ACF +0xF2934, symbol table at +0x915C)
+     wait; fade 0x0C90(0,1,30) x2; wait on 0x0C92; CALL 0x102E; return
+0x102E  (group 4 table ov2 0x02125D3C index 0x2E, handler 0x0211D5F0)
+     [*0x021260E0 + 0x1F18] = 3        <- the ONLY single-player state-3 writer
+        -> CFieldToCaptureState -> scene 0x29 -> scene 2 (see section 3)
+```
+
+### Script symbol tables
+
+Scripts carry a symbol table at `[hdr+4, hdr+8)`: 12-byte entries
+`{u32 name0, u32 name1, u32 addr/4}`. Names are base 40, six characters per
+word (`0-9`=1..10, letters=11..36 case-insensitive, `_`=37, `-`=38, `/`=39),
+as packed by ARM9 `0x020667E0`. This is how `sToCapture` was located.
+`tools/analyze_field_captures.py` uses it to label every capture with its
+enclosing script function (e.g. `M02_00_BT473`, `MQ01_EV002_0`).
+
+### Field capture sweep
+
+```bash
+bash tools/setup_guardian_tools.sh && bash tools/extract_localization.sh   # optional: names
+python3 tools/analyze_field_captures.py
+```
+
+Result: **60 scripts, 164 setup sequences, 158 of which end in CAP_START**.
+CSVs go to `research/capture/generated/field_capture_{calls,sequences}.csv`, and
+a snapshot is tracked at `research/capture/field_capture_sequences_2026-11-17.csv`.
+The targets include legendaries (Raikou, Entei, Lugia, Ho-Oh, Articuno, Zapdos,
+Jirachi), bosses and multi-target captures (e.g. six Tauros in
+`MQ01_EV002_0`).
+
+## 6. Still open
+
+1. **Free-roaming wild spawns**: which map data places `CFieldWildPokemon`
+   actors and sets `+0x85C`. They're created through the generic actor pool,
+   so the cheapest route is dynamic: break on `CaptureSetup_Add 0x02041998`
+   (resident) during a wild contact and walk back from the `CFieldWildPokemon`
+   at `ctx+0x1F28`.
+2. Label states 1..12 of `CCaptureScene` (only Result/AddBrowser/
    CheckRelease are confirmed through static initializers so far).
+3. Semantics of entry fields `a/b/c` and setup `+0x140..+0x156`.
 
-## 5. Breakpoints that are now safe
+Tooling note: Capstone's linear `disasm()` stops at the first data word, so
+scanning a whole overlay that way silently misses most of it. Scan word by word
+(as `find_mem`-style loops do) when searching for instruction patterns.
+
+## 7. Breakpoints that are now safe
 
 These are in resident ARM9 and can never be overwritten by an overlay load:
 
@@ -174,16 +273,20 @@ These are in resident ARM9 and can never be overwritten by an overlay load:
 | `0x0203D9BC` | scene_overlay(sceneId) | `r0` = scene |
 | `0x0207DF7C` | FS_LoadOverlay(0, id) | `r1` = overlay |
 | `0x0203DEE0` | scene_create(sceneId) | the scene's overlay **is resident** here, so it's the right moment to arm overlay breakpoints |
+| `0x020418D4` | CaptureSetup_Clear | |
+| `0x02041998` | CaptureSetup_Add | `r1` = dex number, called for every capture target |
 
 `tools/gdb/ordinary_capture_trace.gdb` sets these, logs the scene/overlay
 sequence, and dumps `0x020B7A7C`/`0x020B79E8` at every scene creation.
 
-## 6. Consequence for Capture Select
+## 8. Consequence for Capture Select
 
 A main-menu "Capture Select" can work at the **scene level**:
 
-1. fill the resident request block `0x020B7AB8` (BGM, arena, return scene
-   = the menu's scene) plus whatever target list item 4.1 identifies;
+1. `CaptureSetup_Clear(0x020B797C)`, then `CaptureSetup_Add(0x020B797C, dex, …)`
+   for each target, set BGM/arena at `+0x13C/+0x13E`, and set the return scene
+   at `+0x144` (`0x020B7AC0`) to the menu's scene. That's exactly what the field
+   scripts do through commands `0x0CA2/0x0CA5/0x0CA7/0x0CB0`;
 2. return scene `0x29` (with transition) or `2` (direct) from the menu scene's
    `Update()`.
 

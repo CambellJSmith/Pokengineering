@@ -29,11 +29,13 @@ tools/gdb/ordinary_capture_trace.gdb (2026-11-17)
 research/capture/scene_table.csv  (2026-11-17)
 research/code/rtti_classes.txt    (2026-11-17)
 docs/scene_system.md              (2026-11-17)
+tools/analyze_field_captures.py   (2026-11-17)
+research/capture/field_capture_sequences_2026-11-17.csv
 ```
 
 The exact stopping point (updated **2026-11-17**) is:
 
-> **The ordinary capture launcher is now statically identified:** field state 3 `CFieldToCaptureState` (ov2 `0x020DF760`) → scene `0x29` `CBossProduceScene` (ov22) → scene `2` `CCaptureScene` (ov3) → scene `0x1B` `CCaptureToFieldScene`. The full scene table and RTTI class hierarchy have been recovered. The next step is one dynamic trace with `tools/gdb/ordinary_capture_trace.gdb` to find which resident structure carries the target Pokémon list. See **[docs/scene_system.md](docs/scene_system.md)** and section 19.
+> **Every field capture is now explained statically.** Wild contact or script commands `0x0CA2/0x0CA5/…` fill the resident `CaptureSetup` at `0x020B797C` (count + National-Dex targets). Script `sToCapture` then sets field state 3 via `0x102E`, and the game goes `CFieldToCaptureState` → scene `0x29` → scene `2` `CCaptureScene`. 158 scripted field captures are extracted with names and event labels. What's left is free-roaming wild spawn data (best done dynamically with a breakpoint on resident `0x02041998`). See **[docs/scene_system.md](docs/scene_system.md)** and section 19.
 
 Do **not** restart from species-ID searches or from `1C10`; those paths are already understood as described below.
 
@@ -54,7 +56,7 @@ Do **not** restart from species-ID searches or from `1C10`; those paths are alre
 11. Script VM instruction format and game-command dispatcher substantially decoded.
 12. Exact Spearow script stream found in the canonical raw game ACF.
 13. **Proven state bridge:** `1C10 -> state 3 -> CSkyCaptureBeforeState -> LoadCapturePokemon`.
-14. Whole raw-ACF sweep: **1,695 script streams, 20 state-3 capture transitions in 16 streams**.
+14. Whole raw-ACF sweep: **1,683 script streams, 20 state-3 capture transitions in 16 streams**.
 15. Separate ordinary-capture class family identified: `CCaptureScene`, `CCaptureContext`, `CCapturePokemon`, etc.
 
 Current high-level architecture:
@@ -181,7 +183,7 @@ capture transitions : 0
 Canonical raw result:
 
 ```text
-script-like streams : 1695
+script-like streams : 1683
 capture transitions : 20
 setup-only scripts  : 0
 ```
@@ -208,7 +210,7 @@ Expected headline:
 
 ```text
 Known Spearow signature verified at +0xF844C.
-script-like streams : 1695
+script-like streams : 1683
 capture transitions : 20
 setup-only scripts  : 0
 ```
@@ -579,7 +581,7 @@ Spearow dynamically used `0x0210360C` (`1C54`).
 Validated result:
 
 ```text
-script streams:        1695
+script streams:        1683
 scripts with 1C10:       16
 capture transitions:     20
 setup-only scripts:       0
@@ -788,22 +790,14 @@ Important quirks:
 
 ## 18. Exact next task
 
-The static part of the old next task is **done** (section 19). What's left:
+The static part of the ordinary-capture question is **done** (section 19 and `docs/scene_system.md`). Next:
 
-1. Run `gdb -q -x tools/gdb/ordinary_capture_trace.gdb` against DeSmuME and walk into a wild Pokémon. Confirm the scene sequence `1 → 0x29 → 2 → 0x1B → 1` and the overlay loads `2 → 22 → 3 → (none) → 2`.
-2. At `scene_create(2)`, arm `break *0x020D1D38` (`CCaptureContext::Init`). At `scene_create(1)`, arm `break *0x020D34C8` (field applies a pending state, `r5` = new state) and `break *0x020DF760` (`CFieldToCaptureState::Enter`).
-3. Identify the resident structure that carries the target Pokémon list from `CFieldWildPokemon` to `CCapturePokemonManage`. Start with `0x020B7A7C`, `0x020B797C` and `0x020B7954`.
-4. Find who sets field pending state 3 (the wild-Pokémon collision path).
-
-After that:
-
-1. automate ordinary-capture trigger/definition extraction (field map actor data → target list);
-2. map the 20 scripted state-3 triggers to maps/missions;
-3. deduplicate triggers into capture definitions;
-4. build the complete capture database;
-5. build Capture Select as a **scene transition** (fill `0x020B7AB8` + target list, return scene `0x29`/`2`). See `docs/scene_system.md` section 6;
-6. implement BLZ repacking for ARM9 and overlays;
-7. add **Capture Select** to the main menu.
+1. **Free-roaming wild spawns.** Run `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon and confirm `[CAP_CLEAR]`, then `[CAP_ADD] dex=…` with `lr` ≈ `0x020D57D4`, then the scene sequence `1 → 0x29 → 2 → 0x1B → 1`. Then find which map data creates `CFieldWildPokemon` actors and sets `+0x85C`, so wild spawns can be extracted statically for every map.
+2. Confirm one scripted capture (e.g. a `M02_xx_BTnnn` event) logs `[CAP_ADD]` from `lr` `0x0211A5E8`/`0x020419E4`.
+3. Map script labels (`M02_00_…`, `MQ01_EV…`) and ACF offsets to maps/missions/quests.
+4. Merge the three sources into one capture database: sky `1C10` (20), field scripted (158), wild spawns (TBD). Deduplicate into definitions.
+5. Build Capture Select as a scene transition: `CaptureSetup_Clear/Add` on `0x020B797C`, set BGM/arena/return scene, return scene `0x29` or `2` (`docs/scene_system.md` section 8).
+6. BLZ repacking for ARM9 and overlays, then add **Capture Select** to the main menu.
 
 ---
 
@@ -829,6 +823,17 @@ python3 tools/scene_map.py --csv research/capture/scene_table.csv
 
 ---
 
+### Second pass (same day): capture setup and trigger
+
+- Resident `CaptureSetup` struct at `0x020B797C`: `+0` count, `+0xC` entries `{u32, u16 dexId, u16, u16}`, `+0x13C` BGM, `+0x13E` arena, `+0x144` return scene, `+0x15C` result. API: `0x020418D4` clear, `0x02041998` add.
+- Field states: 3 = `CFieldToCaptureState`, 7 = `CFieldAuthoringEventState`. Pending state is at `[*0x021260E0 + 0x1F18]`.
+- Field script group-3 capture commands `0x0CA2–0x0CB2` decoded. The common script `sToCapture` calls `0x102E`, which is the only single-player writer of field state 3.
+- Script symbol tables decoded (base-40 names). `tools/analyze_field_captures.py` finds **158 started field captures in 60 scripts**, labelled by event (`M02_00_BT473` …) and named via localization file `0268`.
+- `0x02041998` is resident and called for every capture target, so it's the ideal dynamic breakpoint (already in the GDB script).
+- Stream count is 1,683 (both tools agree; the earlier "1,695" figure was wrong). Sky `1C10` transitions are still 20.
+
+---
+
 ## Final stopping point — 2026-11-17
 
-> **Ordinary capture launcher found statically (field state 3 → scene 0x29 → scene 2). Next: one dynamic trace with `tools/gdb/ordinary_capture_trace.gdb` to locate the resident target-Pokémon list, then start the capture database. Capture Select should be built as a scene transition.**
+> **Field capture setup and trigger chain are fully mapped statically. 158 scripted field captures are extracted. Next: one dynamic wild-contact trace (resident breakpoint `0x02041998`) to find the map data for free-roaming wild spawns, then merge everything into the capture database. Capture Select = `CaptureSetup` + scene transition.**
