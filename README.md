@@ -22,11 +22,18 @@ tools/build_debug_rom.sh
 tools/decode_script_vm.py
 tools/analyze_capture_scripts.py
 research/capture/capture_candidates_2026-10-04.csv
+tools/decompress_arm9.py          (2026-11-17)
+tools/rtti_hierarchy.py           (2026-11-17)
+tools/scene_map.py                (2026-11-17)
+tools/gdb/ordinary_capture_trace.gdb (2026-11-17)
+research/capture/scene_table.csv  (2026-11-17)
+research/code/rtti_classes.txt    (2026-11-17)
+docs/scene_system.md              (2026-11-17)
 ```
 
-The exact stopping point is:
+The exact stopping point (updated **2026-11-17**) is:
 
-> **The scripted `CSkyCaptureBeforeState` path is mapped and bulk-swept. The next unresolved bridge is ordinary overworld encounter → normal capture launcher → `CCaptureScene`.**
+> **The ordinary capture launcher is now statically identified:** field state 3 `CFieldToCaptureState` (ov2 `0x020DF760`) → scene `0x29` `CBossProduceScene` (ov22) → scene `2` `CCaptureScene` (ov3) → scene `0x1B` `CCaptureToFieldScene`. The full scene table and RTTI class hierarchy have been recovered. The next step is one dynamic trace with `tools/gdb/ordinary_capture_trace.gdb` to find which resident structure carries the target Pokémon list. See **[docs/scene_system.md](docs/scene_system.md)** and section 19.
 
 Do **not** restart from species-ID searches or from `1C10`; those paths are already understood as described below.
 
@@ -302,9 +309,9 @@ State `3` is **not unknown**; it is confirmed `CSkyCaptureBeforeState`.
 
 ## 7. Runtime ARM9 note
 
-Some live ARM9 code did not usefully match the stored `arm9.bin` representation. Runtime ARM9 was therefore dumped from RAM and disassembled separately.
+**Solved 2026-11-17:** `arm9.bin` is BLZ-compressed (module params `compressed_static_end = 0x02066C94`). `python3 tools/decompress_arm9.py` writes `work/code_analysis/runtime/arm9_decompressed.bin`, which matches RAM 1:1 for `0x02000000-0x020AA898`. Static BSS is `0x020AA0A0-0x020D00C0`.
 
-Do not assume arbitrary live ARM9 patches map directly to the same stored-file offset until that representation difference is understood.
+ARM9 patches therefore need BLZ recompression, the same way overlays do. Alternatively, clear `compressed_static_end` and store ARM9 uncompressed, if it still fits.
 
 ---
 
@@ -781,45 +788,47 @@ Important quirks:
 
 ## 18. Exact next task
 
-Do **not** search for more `1C10` calls first.
+The static part of the old next task is **done** (section 19). What's left:
 
-Next objective:
-
-```text
-ordinary overworld Pokémon
-        ↓
-world/map actor collision
-        ↓
-normal-capture launcher
-        ↓
-CCaptureScene
-        ↓
-CCaptureContext
-        ↓
-capture definition
-```
-
-Preferred approach is **static-first**:
-
-1. find all writes/references to the `CCaptureScene` vptr/table;
-2. find callers/owners of the `0x020Dxxxx` scene methods;
-3. identify allocation/construction paths for `CCaptureScene` and `CCaptureContext`;
-4. trace backward to world/map actor code and encounter parameters;
-5. find a stable breakpoint outside unloaded overlay RAM, or identify a reliable overlay-load boundary;
-6. then perform one clean dynamic ordinary-capture trace.
+1. Run `gdb -q -x tools/gdb/ordinary_capture_trace.gdb` against DeSmuME and walk into a wild Pokémon. Confirm the scene sequence `1 → 0x29 → 2 → 0x1B → 1` and the overlay loads `2 → 22 → 3 → (none) → 2`.
+2. At `scene_create(2)`, arm `break *0x020D1D38` (`CCaptureContext::Init`). At `scene_create(1)`, arm `break *0x020D34C8` (field applies a pending state, `r5` = new state) and `break *0x020DF760` (`CFieldToCaptureState::Enter`).
+3. Identify the resident structure that carries the target Pokémon list from `CFieldWildPokemon` to `CCapturePokemonManage`. Start with `0x020B7A7C`, `0x020B797C` and `0x020B7954`.
+4. Find who sets field pending state 3 (the wild-Pokémon collision path).
 
 After that:
 
-1. automate ordinary-capture trigger/definition extraction;
+1. automate ordinary-capture trigger/definition extraction (field map actor data → target list);
 2. map the 20 scripted state-3 triggers to maps/missions;
 3. deduplicate triggers into capture definitions;
 4. build the complete capture database;
-5. identify a safe arbitrary-capture dispatcher;
-6. implement overlay BLZ repacking/edit pipeline;
+5. build Capture Select as a **scene transition** (fill `0x020B7AB8` + target list, return scene `0x29`/`2`). See `docs/scene_system.md` section 6;
+6. implement BLZ repacking for ARM9 and overlays;
 7. add **Capture Select** to the main menu.
 
 ---
 
-## Final stopping point — 2026-10-04
+## 19. 2026-11-17 static breakthrough (summary)
 
-> **The scripted `CSkyCaptureBeforeState` route is proven and exhaustively swept across the canonical raw ACF. The next unresolved problem is the separate ordinary overworld capture route. Start by statically tracing `CCaptureScene` / `CCaptureContext` ownership and construction, then choose a breakpoint that is valid only after overlay 3 is resident.**
+Full details: **[docs/scene_system.md](docs/scene_system.md)**.
+
+```bash
+bash tools/analyze_game_code.sh
+python3 tools/decompress_arm9.py
+python3 tools/rtti_hierarchy.py 'Capture|Field.*State'   # class hierarchy + vtables
+python3 tools/scene_map.py --csv research/capture/scene_table.csv
+```
+
+- `arm9.bin` was compressed. Decompressing it resolved the runtime mismatch.
+- 460 RTTI classes recovered across ARM9 + 34 overlays (`research/code/rtti_classes.txt`).
+- Scene manager: `scene_overlay 0x0203D9BC`, `scene_create 0x0203DEE0`. All 58 scene IDs are mapped to an overlay, a constructor and a class.
+- `CCaptureScene` is scene `2` (ov3, ctor `0x020D013C`). `0x020D012C` is only the base ctor.
+- Ordinary chain: field state 3 `CFieldToCaptureState` → scene `0x29` `CBossProduceScene` → scene `2` → scene `0x1B`.
+- Resident capture request block: `0x020B7AB8` (= transition block `0x020B7A7C + 0x3C`). `+8` = return scene, `+0` = BGM kind, `+2` = arena/BG.
+- `LoadCapturePokemon` is a resource preloader, not a target selector.
+- Ov2/ov3/ov22 overlap in RAM. Use the resident breakpoints in `tools/gdb/ordinary_capture_trace.gdb`.
+
+---
+
+## Final stopping point — 2026-11-17
+
+> **Ordinary capture launcher found statically (field state 3 → scene 0x29 → scene 2). Next: one dynamic trace with `tools/gdb/ordinary_capture_trace.gdb` to locate the resident target-Pokémon list, then start the capture database. Capture Select should be built as a scene transition.**
