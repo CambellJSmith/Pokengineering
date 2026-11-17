@@ -54,6 +54,9 @@ def main():
 
     wild = read("wild_spawns_2026-11-17.csv")
     wild_index = collections.defaultdict(list)
+    by_id = collections.defaultdict(list)
+    for w in wild:
+        by_id[int(w["ranger_id"])].append(w)
     for w in wild:
         for m in (w["map"] or "").split():
             wild_index[(m, int(w["ranger_id"]))].append(w)
@@ -65,13 +68,23 @@ def main():
             rid = int(t.split(":")[0].split(",")[0])
             mp = label_map(r["label"])
             linked = wild_index.get((mp, rid), [])
+            how = "same_map"
+            if not linked:
+                # An exact Ranger ID placed on
+                # exactly one single-player map gives a CANDIDATE map only.
+                cands = [w for w in by_id.get(rid, []) if w["set"] == "single" and w["map"]]
+                maps = {w["map"] for w in cands}
+                if len(maps) == 1:
+                    # weak: IDs are reused across maps, so only a candidate
+                    linked, how = cands, "unique_id"
             out.append({
                 "source": "field_script", "ranger_id": rid, "name": nm(rid),
-                "map": mp, "trigger": f"script@{r['acf_offset']}+{r['start_off']}",
+                "map": mp, "candidate_map": linked[0]["map"] if linked and how == "unique_id" else "",
+                "trigger": f"script@{r['acf_offset']}+{r['start_off']}",
                 "label": r["label"],
                 "x": linked[0]["x"] if linked else "", "z": linked[0]["z"] if linked else "",
                 "params": r["params"],
-                "note": f"linked_wild={len(linked)}" if linked else "",
+                "note": f"linked_wild={len(linked)} ({how})" if linked else "",
             })
 
     for w in wild:
@@ -88,7 +101,9 @@ def main():
         row["definition_key"] = f"id{row['ranger_id']}" if row["ranger_id"] != "" else "unresolved"
     for row in out:
         row["dex"] = ranger_ids.dex_of(row["ranger_id"]) if row["ranger_id"] != "" else ""
-    fields = ["definition_key", "source", "ranger_id", "dex", "name", "map", "label", "trigger", "x", "z", "params", "note"]
+    for row in out:
+        row.setdefault("candidate_map", "")
+    fields = ["definition_key", "source", "ranger_id", "dex", "name", "map", "candidate_map", "label", "trigger", "x", "z", "params", "note"]
     path = CAP / "capture_database.csv"
     with open(path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)
@@ -100,8 +115,9 @@ def main():
     dex = {r["dex"] for r in out if isinstance(r["dex"], int) and r["dex"] < 900}
     print(f"rows: {len(out)} {dict(by_src)}")
     print(f"distinct Ranger IDs: {len(ids)}; distinct species (National Dex): {len(dex)}")
-    linked = sum(1 for r in out if r["note"].startswith("linked_wild"))
-    print(f"scripted targets linked to a wild placement on the same map: {linked}")
+    same = sum(1 for r in out if "(same_map)" in r["note"])
+    cand = sum(1 for r in out if "(unique_id)" in r["note"])
+    print(f"scripted targets linked to a placement on their labelled map: {same}; weak candidate maps: {cand}")
     print(f"wrote {path.relative_to(ROOT)}")
 
 
