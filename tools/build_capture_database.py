@@ -81,7 +81,7 @@ def main():
             "map": w["map"], "trigger": f"placement entry {w['acf_entry']}#{w['index']}",
             "label": "", "x": w["x"], "z": w["z"],
             "params": f"f2={w['f2']} f3={w['f3']} f8..f15={','.join(w[f'f{k}'] for k in range(8, 16))}",
-            "note": "" if w["map"] else "package not referenced by MPPS",
+            "note": "" if w["map"] else f"{w['set']} placement set (map from runtime quest data)",
         })
 
     for row in out:

@@ -22,6 +22,10 @@ records; ARM9 0x0203F4A8 copies rec[0] (set selector), rec[1] (map number),
 rec[2] (sub-map) and rec+8 (u16 placement index). ov2 0x020D6460 loads placement
 resource  rec+8 + (rec[0] ? 0x1E1B : 0x1CAD)  ->  map "mNNN_SS". Several records
 can name the same map (story-progress variants).
+Placement sets: 0x1CAD.. (entries 7341-7706, 366) = single-player, all named
+via MPPS; 0x1E1B.. (7707-8130, 424) = multiplayer/co-op: CCommuContext
+(ov2 0x0210E89C) sets the selector byte, and the index comes from runtime
+quest data (0x020B8A92, stride 0x224), so those maps aren't named here.
 
 Requires work/game_acf/archive (bash tools/extract_game_data.sh).
 """
@@ -117,6 +121,7 @@ def main():
                 r = ENEMY.unpack_from(L, 8 + ENEMY.size * i)
                 rows.append({
                     "acf_entry": int(path.stem),
+                    "set": "single" if int(path.stem) < 0x1E1B else "multiplayer",
                     "map": " ".join(sorted({m for _, m in maps.get(int(path.stem), [])})),
                     "mpps_records": " ".join(str(i) for i, _ in maps.get(int(path.stem), [])),
                     "map_w": w, "map_h": h, "index": i,

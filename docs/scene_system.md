@@ -325,8 +325,11 @@ no Pokémon sprite, so they're special non-Pokémon targets.
 
 ## 6b. Still open
 
-1. 1,581 placements in packages that no MPPS record points at (other
-   placement sets, quests and missions, multiplayer).
+1. Map names for the **multiplayer placement set** (entries 7707–8130, 1,581
+   placements). `CCommuContext` (ov2 `0x0210E89C`) sets the selector byte, so
+   these use base `0x1E1B`, and the index comes from runtime quest data at
+   `0x020B8A92` (stride `0x224`). The single-player set (7341–7706) is fully
+   named through MPPS.
 2. What distinguishes variant IDs of the same species (e.g. Pidgey 11/12/13/389/440/506):
    difficulty, HP and behaviour in `FPKD`/`CPOK`.
 3. Meaning of the Enemy fields `f2,f3,f5,f8..f15` (probably appearance
