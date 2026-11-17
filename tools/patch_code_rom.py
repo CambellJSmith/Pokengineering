@@ -22,6 +22,13 @@ Patch file (JSON):
   ]
 "expect" (optional) must match the original bytes or the patch is refused.
 
+Growing an overlay (code cave):
+    {"target": "ov028", "append_after_bss": "<hex>"}
+appends zeros for the overlay's BSS and then the given bytes, so the cave
+starts at ram + ram_size + bss_size and no existing (BSS) address moves; the
+overlay table gets ram_size = new length and bss_size = 0. Address patches in
+the same file may target the cave.
+
 Usage:
   bash tools/build_debug_rom.sh                      # base ROM
   python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \\
@@ -72,6 +79,10 @@ def load_patches(path: Path | None):
     items = json.loads(path.read_text())
     out = []
     for it in items:
+        if "append_after_bss" in it:
+            out.append({"target": it["target"].lower(), "append": bytes.fromhex(it["append_after_bss"]),
+                        "comment": it.get("comment", "")})
+            continue
         out.append({
             "target": it["target"].lower(),
             "addr": int(str(it["addr"]), 0),
@@ -84,6 +95,8 @@ def load_patches(path: Path | None):
 
 def apply(image: bytearray, base: int, patches, name: str):
     for p in patches:
+        if "append" in p:
+            continue
         off = p["addr"] - base
         if not (0 <= off and off + len(p["data"]) <= len(image)):
             raise SystemExit(f"{name}: patch at 0x{p['addr']:08X} is outside the image")
@@ -138,8 +151,18 @@ def main() -> int:
         start, end = struct.unpack_from("<II", rom, fat_off + 8 * fid)
         raw = bytes(rom[start:end])
         image = bytearray(blz.decompress(raw) if (comp >> 24) & 1 else raw)
-        if len(image) != ram_size:
+        if len(image) != ram_size and not any("append" in p for p in tp):
             raise SystemExit(f"overlay {ov}: decoded {len(image):#x} != table size {ram_size:#x}")
+        appends = [p for p in tp if "append" in p]
+        if appends:
+            image.extend(b"\0" * bss)
+            for p in appends:
+                image.extend(p["append"])
+                print(f"  grew {tgt}: cave {ram + ram_size + bss:#010x} +{len(p['append']):#x} bytes {p['comment']}")
+            while len(image) % 4:
+                image.append(0)
+            struct.pack_into("<I", rom, e + 8, len(image))      # ram_size
+            struct.pack_into("<I", rom, e + 12, 0)              # bss_size (materialised)
         apply(image, ram, tp, tgt)
         pos = append_aligned(rom, bytes(image))
         struct.pack_into("<II", rom, fat_off + 8 * fid, pos, pos + len(image))
