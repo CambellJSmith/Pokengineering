@@ -422,7 +422,8 @@ current scene's `Update()` (ov28 `0x020D20A4`, caller `0x0200E2CC`) return
 The screenshots show a working capture battle: the HUD reads "Pokémon ×1
 PIDGEY", the capture timer runs, and the styler is at 010/010. This is
 **without any code patch**, so the resident scene system and `CaptureSetup`
-are all a menu needs. (The arena is black with `+0x13E = 0xFFFF`; set a
+are all a menu needs. A second run with `RANGER_ID=419` produced a SUICUNE
+boss capture (boss HP bar shown), so it works for arbitrary targets. (The arena is black with `+0x13E = 0xFFFF`; set a
 real arena ID for a background.)
 
 ## 8. Consequence for Capture Select
