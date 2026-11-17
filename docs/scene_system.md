@@ -379,6 +379,52 @@ These are in resident ARM9 and can never be overwritten by an overlay load:
 `tools/gdb/ordinary_capture_trace.gdb` sets these, logs the scene/overlay
 sequence, and dumps `0x020B7A7C`/`0x020B79E8` at every scene creation.
 
+## 9. Code patching and the live Capture Select proof of concept
+
+### Patching without BLZ re-compression
+
+`tools/patch_code_rom.py IN.nds --patches p.json --output OUT.nds` applies
+RAM-addressed patches (`{"target": "ov003"|"arm9", "addr", "hex", "expect"}`)
+and stores each touched executable **uncompressed** at the end of the ROM:
+
+- overlays: FAT entry repointed, overlay-table word `+0x1C` (flags|size) = 0;
+- ARM9: module params `compressed_static_end` = 0, header ARM9 offset/size
+  updated, Nitro footer kept.
+
+Smoke test (`--decompress arm9 ov002 ov003 ov022`, no patches): the readback
+matches the analysis images byte for byte (ARM9 differs only at `0xBB4`, the
+cleared field), and the ROM boots in DeSmuME with the identical
+scene/overlay sequence.
+
+### Headless emulator
+
+`apt-get install desmume gdb-multiarch xvfb imagemagick`, then
+`tools/emu/run_headless.sh ROM SCRIPT.py SECONDS LOG [SHOT_DIR]` runs
+`desmume-cli --arm9gdb` under Xvfb and drives it with a GDB Python script
+(Python loops with `continue` are reliable; GDB `commands` blocks are not).
+Baseline boot: overlay 0, 1 → scene `0x00` → overlay 28 → scene `0x25`.
+
+### Proof of concept (confirmed in the emulator, 2026-11-17)
+
+`tools/emu/capture_select_poc.py` (env `RANGER_ID`, `RETURN_SCENE`):
+at the title/demo scene it writes Clear defaults plus one target into
+`CaptureSetup 0x020B797C`, sets the return scene `+0x144 = 0x25`, and makes the
+current scene's `Update()` (ov28 `0x020D20A4`, caller `0x0200E2CC`) return
+`2`. Observed:
+
+```text
+[load_overlay] 3
+[scene_create] 0x02            setup: count 1, id 0xD, ret 0x25
+[CCaptureContext::Init] this=0x0211E244
+[capture state request] 1
+```
+
+The screenshots show a working capture battle: the HUD reads "Pokémon ×1
+PIDGEY", the capture timer runs, and the styler is at 010/010. This is
+**without any code patch**, so the resident scene system and `CaptureSetup`
+are all a menu needs. (The arena is black with `+0x13E = 0xFFFF`; set a
+real arena ID for a background.)
+
 ## 8. Consequence for Capture Select
 
 A main-menu "Capture Select" can work at the **scene level**:

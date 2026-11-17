@@ -23,6 +23,6 @@ fi
 cleanup() { kill $EMU $XV ${SHOOT:-} 2>/dev/null || true; }
 trap cleanup EXIT
 sleep 3
-timeout "$SECS" gdb-multiarch -q -nx -batch \
+timeout -k 5 "$SECS" gdb-multiarch -q -nx -batch \
     -ex "set architecture armv5te" -ex "set pagination off" -ex "set confirm off" \
     -ex "target remote localhost:$PORT" -x "$SCRIPT" >"$LOG" 2>&1 || true

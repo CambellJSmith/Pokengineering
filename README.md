@@ -804,8 +804,8 @@ Statically, every capture source is now located and extracted (`docs/scene_syste
 2. The 1,581 unnamed wild placements are all in the **multiplayer** placement set (entries 7707–8130, base `0x1E1B`, selected by `CCommuContext`). They matter for Capture Select only if co-op captures are wanted; their map index comes from runtime quest data `0x020B8A92`.
 3. Work out what distinguishes variant Ranger IDs of the same species (`FPKD`/`CPOK` fields: HP, difficulty, behaviour).
 4. Optional dynamic confirmation: `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon, and expect `[CAP_ADD] dex=…` and scenes `1 → 0x29 → 2 → 0x1B → 1`.
-5. Capture Select: from a menu scene, `CaptureSetup_Clear/Add(0x020B797C, id, …)`, set BGM `+0x13C`, arena `+0x13E` and return scene `+0x144`, then return scene `0x29` or `2` (`docs/scene_system.md` section 8).
-6. BLZ repacking for ARM9 and overlays, then add **Capture Select** to the main menu.
+5. Capture Select: **proven live** (`tools/emu/capture_select_poc.py`). Next, implement it as a ROM patch: a title/main-menu hook that fills `CaptureSetup` from a selection list and returns scene `2`. Use `tools/patch_code_rom.py` (uncompressed code, no BLZ compressor needed).
+6. Pick per-target arena/BGM from the database (`CAP_ARENA`/`CAP_BGM` of the original script, or the map's default arena).
 
 ---
 
@@ -852,6 +852,16 @@ python3 tools/scene_map.py --csv research/capture/scene_table.csv
 
 ---
 
+### Fourth pass (same day): IDs, maps, patching, live proof of concept
+
+- Ranger ID → Dex via `FPKD+0x2E` (`tools/ranger_ids.py`). It's confirmed by all 24 `BTnnn` labels, by every sky capture being a flyer, and **on screen** ("PIDGEY" for ID 13).
+- Script → map: map script = MPPS `rec+0xA + 8`. Chapter scripts → chapter start map via `2483.CHPT`. 297 of 299 scripted targets now have a map or chapter map.
+- Placement set `0x1E1B` (entries 7707–8130) = multiplayer (`CCommuContext`).
+- `tools/patch_code_rom.py`: patch ARM9/overlays and store them uncompressed. Boot-tested.
+- `tools/emu/`: headless DeSmuME + GDB. **`capture_select_poc.py` launches a real capture battle of any Ranger ID from the title screen**, with no code patches (`docs/scene_system.md` §9).
+
+---
+
 ## Final stopping point — 2026-11-17
 
-> **Every capture source is located and extracted statically (sky 20, scripted field 158, wild placements 2,549), and the full trigger chain and resident `CaptureSetup` API are documented. Next: merge them into the capture database, then build Capture Select as `CaptureSetup` + a scene transition.**
+> **Capture Select is proven in the emulator:** filling `CaptureSetup` (`0x020B797C`) and returning scene `2` from the title scene starts a normal capture of any Ranger ID. Every capture source is extracted and named (`research/capture/capture_database.csv`). Next: turn the PoC into a real ROM patch (a menu entry/scene that does the same thing, via `tools/patch_code_rom.py`), choosing arena/BGM per database entry.
