@@ -3,6 +3,7 @@
 > Summary: every field capture fills the resident `CaptureSetup` at
 > `0x020B797C`, runs script `sToCapture`, which sets field state 3, then
 > goes through scene `0x29` → scene `2`. Sections 4–5 have the details.
+> Wild placements per map are decoded in section 6.
 
 This document records the static reverse-engineering that resolved the
 "ordinary overworld encounter → normal capture launcher → `CCaptureScene`"
@@ -249,20 +250,66 @@ The targets include legendaries (Raikou, Entei, Lugia, Ho-Oh, Articuno, Zapdos,
 Jirachi), bosses and multi-target captures (e.g. six Tauros in
 `MQ01_EV002_0`).
 
-## 6. Still open
+## 6. Free-roaming wild spawns — solved (statically)
 
-1. **Free-roaming wild spawns**: which map data places `CFieldWildPokemon`
-   actors and sets `+0x85C`. They're created through the generic actor pool,
-   so the cheapest route is dynamic: break on `CaptureSetup_Add 0x02041998`
-   (resident) during a wild contact and walk back from the `CFieldWildPokemon`
-   at `ctx+0x1F28`.
-2. Label states 1..12 of `CCaptureScene` (only Result/AddBrowser/
-   CheckRelease are confirmed through static initializers so far).
-3. Semantics of entry fields `a/b/c` and setup `+0x140..+0x156`.
+Map placement packages are NARCs in `data_game_us.acf`, one per map variant
+(entries 7341–8130). The ARM9 loader is `0x0203F8F4`, which mounts them as `"MPK"`, `"MLY"` and `"MLG"`
+(these are archive mount names, not on-disk magics):
+
+```text
+NARC  ->  file "MPIF" (20-byte map info) + file "LYR\0"+NARC
+            -> NARC[0] -> NARC of layers: {u32 type, u32 count, records}
+layer types (CMapPlacementDataLayer*, vfunc0 = type; factory 0x0203FB18):
+  1 Enemy  2 Npc  3 Object  4 EventRect  5 StartPoint  6 RunawayPoint
+  8 FloorAttribute  9 WallAttribute  10 Shadow
+Enemy record, 26 bytes on disk (descriptor 0x0209C370, unpacker 0x0203F5B8
+-> 0x1E-byte runtime record):
+  s16 x, s16 z, u8 f2, u8 f3, u16 rangerId, u16 f5, u16 f8..f15
+```
+
+The field spawns them in ov2 `0x020D6EC8`/`0x020D741C`, which store
+`record.rangerId` at `CFieldWildPokemon+0x85C` and the `FPKD` record at
+`+0x838`. Wild contact passes `+0x85C` to `CaptureSetup_Add`.
+
+Map table: `2482.MPPS` (resource `0x9B2`, loaded into `0x020B7954`),
+`0x80`-byte records. `0x0203F4A8` copies `rec[0]` (set selector), `rec[1]`
+(map no.), `rec[2]` (sub-map) and `rec+8` (placement index). ov2 `0x020D6460`
+loads placement entry `rec+8 + (rec[0] ? 0x1E1B : 0x1CAD)` for map
+`mNNN_SS` (the geometry is in `data/mapz/mNNN_SS.acz`, Nintendo Huffman-8;
+`tools/nds_huffman.py`).
+
+**Ranger Pokémon ID**: equals the National Dex number for 1–493. Values
+494–769 are Ranger-specific forms and variants. Per-ID tables: `2480.FPKD`
+(resource `0x9B0`, field data, `0x58` × 770, → `0x020BD37C`) and `6846.CPOK`
+(resource `0x1ABE`, capture data, `0x50` × 770, → `0x020B7C78`). Neither
+stores a base Dex number, so IDs above 493 aren't named yet.
+
+```bash
+bash tools/extract_game_data.sh          # once
+python3 tools/extract_wild_spawns.py
+```
+
+Result: **2,549 wild placements in 559 packages, 505 distinct IDs (198 above
+493)**. 968 of them resolve to a map name through MPPS. Snapshot:
+`research/capture/wild_spawns_2026-11-17.csv`.
+
+Cross-check: `m002_00`'s placements include Glalie, Mothim, Combee, Floatzel
+and Abra, which are exactly the scripted captures `M02_00_BT473/157/160/245/131`.
+Those placements have `f2 = 2/3`, while plain roaming ones have `f2 = 0`.
+
+## 6b. Still open
+
+1. 1,581 placements in packages that no MPPS record points at (other
+   placement sets, quests and missions, multiplayer).
+2. Names for Ranger IDs 494–769 (need the name/form table or the text-ID field).
+3. Meaning of the Enemy fields `f2,f3,f5,f8..f15` (probably appearance
+   conditions/flags and probabilities; `f13..f15` are 0/50/100).
+4. Label states 1..12 of `CCaptureScene`.
+5. Semantics of CaptureSetup entry fields `a/b/c` and `+0x140..+0x156`.
 
 Tooling note: Capstone's linear `disasm()` stops at the first data word, so
 scanning a whole overlay that way silently misses most of it. Scan word by word
-(as `find_mem`-style loops do) when searching for instruction patterns.
+when searching for instruction patterns.
 
 ## 7. Breakpoints that are now safe
 

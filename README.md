@@ -31,11 +31,14 @@ research/code/rtti_classes.txt    (2026-11-17)
 docs/scene_system.md              (2026-11-17)
 tools/analyze_field_captures.py   (2026-11-17)
 research/capture/field_capture_sequences_2026-11-17.csv
+tools/extract_wild_spawns.py      (2026-11-17)
+tools/nds_huffman.py              (2026-11-17)
+research/capture/wild_spawns_2026-11-17.csv
 ```
 
 The exact stopping point (updated **2026-11-17**) is:
 
-> **Every field capture is now explained statically.** Wild contact or script commands `0x0CA2/0x0CA5/…` fill the resident `CaptureSetup` at `0x020B797C` (count + National-Dex targets). Script `sToCapture` then sets field state 3 via `0x102E`, and the game goes `CFieldToCaptureState` → scene `0x29` → scene `2` `CCaptureScene`. 158 scripted field captures are extracted with names and event labels. What's left is free-roaming wild spawn data (best done dynamically with a breakpoint on resident `0x02041998`). See **[docs/scene_system.md](docs/scene_system.md)** and section 19.
+> **All three capture sources are now extracted statically:** sky `1C10` scripts (20), field scripted captures (158, `tools/analyze_field_captures.py`), and free-roaming wild placements from the map placement packages (2,549, `tools/extract_wild_spawns.py`). Every field capture goes through the resident `CaptureSetup` (`0x020B797C`) → script `sToCapture` → field state 3 → scene `0x29` → scene `2`. Next: merge everything into one capture database, then build Capture Select as a scene transition. See **[docs/scene_system.md](docs/scene_system.md)**.
 
 Do **not** restart from species-ID searches or from `1C10`; those paths are already understood as described below.
 
@@ -790,13 +793,13 @@ Important quirks:
 
 ## 18. Exact next task
 
-The static part of the ordinary-capture question is **done** (section 19 and `docs/scene_system.md`). Next:
+Statically, every capture source is now located and extracted (`docs/scene_system.md` sections 4–6). Next:
 
-1. **Free-roaming wild spawns.** Run `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon and confirm `[CAP_CLEAR]`, then `[CAP_ADD] dex=…` with `lr` ≈ `0x020D57D4`, then the scene sequence `1 → 0x29 → 2 → 0x1B → 1`. Then find which map data creates `CFieldWildPokemon` actors and sets `+0x85C`, so wild spawns can be extracted statically for every map.
-2. Confirm one scripted capture (e.g. a `M02_xx_BTnnn` event) logs `[CAP_ADD]` from `lr` `0x0211A5E8`/`0x020419E4`.
-3. Map script labels (`M02_00_…`, `MQ01_EV…`) and ACF offsets to maps/missions/quests.
-4. Merge the three sources into one capture database: sky `1C10` (20), field scripted (158), wild spawns (TBD). Deduplicate into definitions.
-5. Build Capture Select as a scene transition: `CaptureSetup_Clear/Add` on `0x020B797C`, set BGM/arena/return scene, return scene `0x29` or `2` (`docs/scene_system.md` section 8).
+1. **Build the capture database.** Merge `capture_candidates_2026-10-04.csv` (sky), `field_capture_sequences_2026-11-17.csv` (scripted field) and `wild_spawns_2026-11-17.csv` (placements). Key it on Ranger ID + map + trigger, and deduplicate into definitions. Script labels `Mnn_ss_*` map to `mNNN_SS`.
+2. Resolve the 1,581 wild placements in packages that no `MPPS` record points at (other placement sets for quests, missions and multiplayer).
+3. Name Ranger IDs 494–769 (forms/variants): find the form/name table or the text-ID field (`FPKD` `2480`, `CPOK` `6846`).
+4. Optional dynamic confirmation: `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon, and expect `[CAP_ADD] dex=…` and scenes `1 → 0x29 → 2 → 0x1B → 1`.
+5. Capture Select: from a menu scene, `CaptureSetup_Clear/Add(0x020B797C, id, …)`, set BGM `+0x13C`, arena `+0x13E` and return scene `+0x144`, then return scene `0x29` or `2` (`docs/scene_system.md` section 8).
 6. BLZ repacking for ARM9 and overlays, then add **Capture Select** to the main menu.
 
 ---
@@ -834,6 +837,16 @@ python3 tools/scene_map.py --csv research/capture/scene_table.csv
 
 ---
 
+### Third pass (same day): wild placements
+
+- Map placement packages: ACF entries 7341–8130 (NARC → `MPIF` + `LYR` → NARC → layer NARC). Layer type 1 = `CMapPlacementDataLayerEnemy`, 26-byte records `{x, z, f2, f3, rangerId, …}`.
+- Map table `2482.MPPS`: placement entry = `rec+8 + (rec[0] ? 0x1E1B : 0x1CAD)`, map name `m{rec[1]:03}_{rec[2]:02}`.
+- `tools/extract_wild_spawns.py`: **2,549 placements, 505 Ranger IDs**, 968 with resolved map names. Cross-checked against the scripted `M02_00_BT*` captures.
+- Ranger Pokémon ID = Dex for 1–493; 494–769 are Ranger-specific. Tables: `FPKD` (2480) and `CPOK` (6846), 770 entries each.
+- `data/mapz/*.acz` = Nintendo Huffman-8 map geometry (`MBG0`); decoder in `tools/nds_huffman.py`.
+
+---
+
 ## Final stopping point — 2026-11-17
 
-> **Field capture setup and trigger chain are fully mapped statically. 158 scripted field captures are extracted. Next: one dynamic wild-contact trace (resident breakpoint `0x02041998`) to find the map data for free-roaming wild spawns, then merge everything into the capture database. Capture Select = `CaptureSetup` + scene transition.**
+> **Every capture source is located and extracted statically (sky 20, scripted field 158, wild placements 2,549), and the full trigger chain and resident `CaptureSetup` API are documented. Next: merge them into the capture database, then build Capture Select as `CaptureSetup` + a scene transition.**
