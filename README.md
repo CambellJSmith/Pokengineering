@@ -33,6 +33,8 @@ tools/analyze_field_captures.py   (2026-11-17)
 research/capture/field_capture_sequences_2026-11-17.csv
 tools/extract_wild_spawns.py      (2026-11-17)
 tools/nds_huffman.py              (2026-11-17)
+tools/build_capture_database.py   (2026-11-17)
+research/capture/capture_database.csv (v1)
 research/capture/wild_spawns_2026-11-17.csv
 ```
 
@@ -795,7 +797,7 @@ Important quirks:
 
 Statically, every capture source is now located and extracted (`docs/scene_system.md` sections 4–6). Next:
 
-1. **Build the capture database.** Merge `capture_candidates_2026-10-04.csv` (sky), `field_capture_sequences_2026-11-17.csv` (scripted field) and `wild_spawns_2026-11-17.csv` (placements). Key it on Ranger ID + map + trigger, and deduplicate into definitions. Script labels `Mnn_ss_*` map to `mNNN_SS`.
+1. **Refine the capture database.** v1 exists: `python3 tools/build_capture_database.py` → `research/capture/capture_database.csv` (2,868 rows: sky 20, scripted 299 targets, wild 2,549; 526 Ranger IDs). Open items: resolve sky target IDs (`1C12`/`1C54` args aren't Dex numbers), map non-`Mnn_ss_` script labels (`MQ…`, `C33EVENT…`, …) to maps/quests, and decode the placement condition fields so roaming variants can be deduplicated into definitions.
 2. Resolve the 1,581 wild placements in packages that no `MPPS` record points at (other placement sets for quests, missions and multiplayer).
 3. Name Ranger IDs 494–769 (forms/variants): find the form/name table or the text-ID field (`FPKD` `2480`, `CPOK` `6846`).
 4. Optional dynamic confirmation: `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon, and expect `[CAP_ADD] dex=…` and scenes `1 → 0x29 → 2 → 0x1B → 1`.
