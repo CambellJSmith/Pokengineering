@@ -309,9 +309,14 @@ copies MPPS `rec+0xA` → runtime `+0x64` and `rec+0xC` → `+0x66`. ov2
 All 31 capture-bearing map scripts (entries 11–229: `M02_*`, `MQnn_*` quest
 events, `Mnn_P*`, `MPnn_WATEREN`, …) resolve to exactly one map. The 29
 `C###_*` scripts (entries ~1150–1200) are chapter/story scripts loaded
-elsewhere (probably through the `ETDT` event tables); their maps are still open.
-`tools/build_capture_database.py` applies this mapping: 95 of 299 scripted
-targets now have a definite map.
+by chapter: chapter table **`2483.CHPT`** (resource `0x9B3` → `0x020BD3F4`,
+12-byte records `{u16 mppsIndex, u8, u8, s16 x, s16 z, u8 chapter, …}`) gives
+each chapter's start map and position. The field builds the label
+`c%03d_start` from `+8` (ov2 `0x020E3850`). The database records this as
+`chapter_start_map`: a chapter's events can happen on other maps, so it's
+a strong hint rather than proof.
+`tools/build_capture_database.py` applies both mappings: 95 of 299 scripted
+targets have a definite map and 202 more have a chapter start map. Two have neither.
 
 ## 6c. Ranger Pokémon IDs → National Dex — solved
 
@@ -341,7 +346,7 @@ no Pokémon sprite, so they're special non-Pokémon targets.
 
 ## 6b. Still open
 
-0. Maps for the `C###` chapter/story scripts (204 scripted targets).
+0. Exact event maps inside chapter scripts (currently only the chapter start map).
 
 1. Map names for the **multiplayer placement set** (entries 7707–8130, 1,581
    placements). `CCommuContext` (ov2 `0x0210E89C`) sets the selector byte, so

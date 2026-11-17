@@ -60,6 +60,25 @@ def script_maps():
     return out
 
 
+def chapter_start_maps():
+    """chapter number -> start map, from 2483.CHPT (resource 0x9B3 -> 0x020BD3F4):
+    12-byte records {u16 mppsIndex, u8, u8, s16 x, s16 z, u8 chapter, ...};
+    the field builds script label "c%03d_start" from +8 (ov2 0x020E3850)."""
+    import struct
+    chpt = ROOT / "work" / "game_acf" / "archive" / "2483.CHPT"
+    if not (chpt.exists() and MPPS.exists()):
+        return {}
+    c, m = chpt.read_bytes(), MPPS.read_bytes()
+    rs, n = struct.unpack_from("<II", c, 4)
+    mrs = struct.unpack_from("<I", m, 4)[0]
+    out = {}
+    for i in range(n):
+        idx, _, _, _, _, chap = struct.unpack_from("<HBBhhB", c, 0x10 + rs * i)
+        r = m[0x10 + mrs * idx:0x10 + mrs * (idx + 1)]
+        out.setdefault(chap, f"m{r[1]:03d}_{r[2]:02d}")
+    return out
+
+
 def label_map(label):
     m = re.match(r"^M(\d+)_(\d+)_", label or "")
     return f"m{int(m.group(1)):03d}_{int(m.group(2)):02d}" if m else ""
@@ -82,6 +101,7 @@ def main():
         })
 
     smaps = script_maps()
+    chapters = chapter_start_maps()
     wild = read("wild_spawns_2026-11-17.csv")
     wild_index = collections.defaultdict(list)
     by_id = collections.defaultdict(list)
@@ -100,6 +120,10 @@ def main():
             owner = smaps.get(int(r["acf_offset"], 16), set())
             if not mp and len(owner) == 1:
                 mp = next(iter(owner))      # the script is this map's map script
+            chap_map = ""
+            mc = re.match(r"^C(\d+)_", r["label"] or "")
+            if mc:
+                chap_map = chapters.get(int(mc.group(1)), "")
             linked = wild_index.get((mp, rid), [])
             how = "same_map"
             if not linked:
@@ -113,6 +137,7 @@ def main():
             out.append({
                 "source": "field_script", "ranger_id": rid, "name": nm(rid),
                 "map": mp, "candidate_map": linked[0]["map"] if linked and how == "unique_id" else "",
+                "chapter_start_map": chap_map,
                 "trigger": f"script@{r['acf_offset']}+{r['start_off']}",
                 "label": r["label"],
                 "x": linked[0]["x"] if linked else "", "z": linked[0]["z"] if linked else "",
@@ -136,7 +161,8 @@ def main():
         row["dex"] = ranger_ids.dex_of(row["ranger_id"]) if row["ranger_id"] != "" else ""
     for row in out:
         row.setdefault("candidate_map", "")
-    fields = ["definition_key", "source", "ranger_id", "dex", "name", "map", "candidate_map", "label", "trigger", "x", "z", "params", "note"]
+        row.setdefault("chapter_start_map", "")
+    fields = ["definition_key", "source", "ranger_id", "dex", "name", "map", "candidate_map", "chapter_start_map", "label", "trigger", "x", "z", "params", "note"]
     path = CAP / "capture_database.csv"
     with open(path, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)
