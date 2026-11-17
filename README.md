@@ -22,11 +22,26 @@ tools/build_debug_rom.sh
 tools/decode_script_vm.py
 tools/analyze_capture_scripts.py
 research/capture/capture_candidates_2026-10-04.csv
+tools/decompress_arm9.py          (2026-11-17)
+tools/rtti_hierarchy.py           (2026-11-17)
+tools/scene_map.py                (2026-11-17)
+tools/gdb/ordinary_capture_trace.gdb (2026-11-17)
+research/capture/scene_table.csv  (2026-11-17)
+research/code/rtti_classes.txt    (2026-11-17)
+docs/scene_system.md              (2026-11-17)
+tools/analyze_field_captures.py   (2026-11-17)
+research/capture/field_capture_sequences_2026-11-17.csv
+tools/extract_wild_spawns.py      (2026-11-17)
+tools/nds_huffman.py              (2026-11-17)
+tools/build_capture_database.py   (2026-11-17)
+tools/ranger_ids.py               (2026-11-17)
+research/capture/capture_database.csv (v1)
+research/capture/wild_spawns_2026-11-17.csv
 ```
 
-The exact stopping point is:
+The exact stopping point (updated **2026-11-17**) is:
 
-> **The scripted `CSkyCaptureBeforeState` path is mapped and bulk-swept. The next unresolved bridge is ordinary overworld encounter → normal capture launcher → `CCaptureScene`.**
+> **All three capture sources are now extracted statically:** sky `1C10` scripts (20), field scripted captures (158, `tools/analyze_field_captures.py`), and free-roaming wild placements from the map placement packages (2,549, `tools/extract_wild_spawns.py`). Every field capture goes through the resident `CaptureSetup` (`0x020B797C`) → script `sToCapture` → field state 3 → scene `0x29` → scene `2`. Next: merge everything into one capture database, then build Capture Select as a scene transition. See **[docs/scene_system.md](docs/scene_system.md)**.
 
 Do **not** restart from species-ID searches or from `1C10`; those paths are already understood as described below.
 
@@ -47,7 +62,7 @@ Do **not** restart from species-ID searches or from `1C10`; those paths are alre
 11. Script VM instruction format and game-command dispatcher substantially decoded.
 12. Exact Spearow script stream found in the canonical raw game ACF.
 13. **Proven state bridge:** `1C10 -> state 3 -> CSkyCaptureBeforeState -> LoadCapturePokemon`.
-14. Whole raw-ACF sweep: **1,695 script streams, 20 state-3 capture transitions in 16 streams**.
+14. Whole raw-ACF sweep: **1,683 script streams, 20 state-3 capture transitions in 16 streams**.
 15. Separate ordinary-capture class family identified: `CCaptureScene`, `CCaptureContext`, `CCapturePokemon`, etc.
 
 Current high-level architecture:
@@ -174,7 +189,7 @@ capture transitions : 0
 Canonical raw result:
 
 ```text
-script-like streams : 1695
+script-like streams : 1683
 capture transitions : 20
 setup-only scripts  : 0
 ```
@@ -201,7 +216,7 @@ Expected headline:
 
 ```text
 Known Spearow signature verified at +0xF844C.
-script-like streams : 1695
+script-like streams : 1683
 capture transitions : 20
 setup-only scripts  : 0
 ```
@@ -259,6 +274,8 @@ Decoded overlays under `work/code_analysis/executables/overlays/` are analysis c
 
 Intro target: **Spearow**, National Dex `21 / 0x0015`.
 
+> **2026-11-17 correction:** the script's capture ID is Ranger ID `13`, which `FPKD+0x2E` maps to **Dex 16 Pidgey** (model 8). No Ranger ID maps to Dex 21, so there's no Spearow capture data in the game. Treat "Spearow" below as "the intro sky target (Pidgey)" until rechecked in-game. See `docs/scene_system.md` section 6c.
+
 ### `0x0222F104` is display identity only
 
 Changing writes of `21` to `396` (Starly) caused:
@@ -302,9 +319,9 @@ State `3` is **not unknown**; it is confirmed `CSkyCaptureBeforeState`.
 
 ## 7. Runtime ARM9 note
 
-Some live ARM9 code did not usefully match the stored `arm9.bin` representation. Runtime ARM9 was therefore dumped from RAM and disassembled separately.
+**Solved 2026-11-17:** `arm9.bin` is BLZ-compressed (module params `compressed_static_end = 0x02066C94`). `python3 tools/decompress_arm9.py` writes `work/code_analysis/runtime/arm9_decompressed.bin`, which matches RAM 1:1 for `0x02000000-0x020AA898`. Static BSS is `0x020AA0A0-0x020D00C0`.
 
-Do not assume arbitrary live ARM9 patches map directly to the same stored-file offset until that representation difference is understood.
+ARM9 patches therefore need BLZ recompression, the same way overlays do. Alternatively, clear `compressed_static_end` and store ARM9 uncompressed, if it still fits.
 
 ---
 
@@ -572,7 +589,7 @@ Spearow dynamically used `0x0210360C` (`1C54`).
 Validated result:
 
 ```text
-script streams:        1695
+script streams:        1683
 scripts with 1C10:       16
 capture transitions:     20
 setup-only scripts:       0
@@ -781,45 +798,70 @@ Important quirks:
 
 ## 18. Exact next task
 
-Do **not** search for more `1C10` calls first.
+Statically, every capture source is now located and extracted (`docs/scene_system.md` sections 4–6). Next:
 
-Next objective:
-
-```text
-ordinary overworld Pokémon
-        ↓
-world/map actor collision
-        ↓
-normal-capture launcher
-        ↓
-CCaptureScene
-        ↓
-CCaptureContext
-        ↓
-capture definition
-```
-
-Preferred approach is **static-first**:
-
-1. find all writes/references to the `CCaptureScene` vptr/table;
-2. find callers/owners of the `0x020Dxxxx` scene methods;
-3. identify allocation/construction paths for `CCaptureScene` and `CCaptureContext`;
-4. trace backward to world/map actor code and encounter parameters;
-5. find a stable breakpoint outside unloaded overlay RAM, or identify a reliable overlay-load boundary;
-6. then perform one clean dynamic ordinary-capture trace.
-
-After that:
-
-1. automate ordinary-capture trigger/definition extraction;
-2. map the 20 scripted state-3 triggers to maps/missions;
-3. deduplicate triggers into capture definitions;
-4. build the complete capture database;
-5. identify a safe arbitrary-capture dispatcher;
-6. implement overlay BLZ repacking/edit pipeline;
-7. add **Capture Select** to the main menu.
+1. **Refine the capture database.** v1 exists: `python3 tools/build_capture_database.py` → `research/capture/capture_database.csv` (2,868 rows: sky 20, scripted 299 targets, wild 2,549; 534 Ranger IDs = 304 species, all named via `tools/ranger_ids.py`). Map scripts are now resolved through MPPS (`rec+0xA + 8`, `docs/scene_system.md` §6d), giving 95 of 299 scripted targets a definite map. Chapter scripts get their chapter's start map from `2483.CHPT` (202 targets). Open items: exact event maps inside chapter scripts, and decode the placement condition fields so roaming variants can be deduplicated into definitions.
+2. The 1,581 unnamed wild placements are all in the **multiplayer** placement set (entries 7707–8130, base `0x1E1B`, selected by `CCommuContext`). They matter for Capture Select only if co-op captures are wanted; their map index comes from runtime quest data `0x020B8A92`.
+3. Work out what distinguishes variant Ranger IDs of the same species (`FPKD`/`CPOK` fields: HP, difficulty, behaviour).
+4. Optional dynamic confirmation: `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon, and expect `[CAP_ADD] dex=…` and scenes `1 → 0x29 → 2 → 0x1B → 1`.
+5. Capture Select: **proven live** (`tools/emu/capture_select_poc.py`). Next, implement it as a ROM patch: a title/main-menu hook that fills `CaptureSetup` from a selection list and returns scene `2`. Use `tools/patch_code_rom.py` (uncompressed code, no BLZ compressor needed).
+6. Pick per-target arena/BGM from the database (`CAP_ARENA`/`CAP_BGM` of the original script, or the map's default arena).
 
 ---
 
-## Final stopping point — 2026-10-04
+## 19. 2026-11-17 static breakthrough (summary)
 
-> **The scripted `CSkyCaptureBeforeState` route is proven and exhaustively swept across the canonical raw ACF. The next unresolved problem is the separate ordinary overworld capture route. Start by statically tracing `CCaptureScene` / `CCaptureContext` ownership and construction, then choose a breakpoint that is valid only after overlay 3 is resident.**
+Full details: **[docs/scene_system.md](docs/scene_system.md)**.
+
+```bash
+bash tools/analyze_game_code.sh
+python3 tools/decompress_arm9.py
+python3 tools/rtti_hierarchy.py 'Capture|Field.*State'   # class hierarchy + vtables
+python3 tools/scene_map.py --csv research/capture/scene_table.csv
+```
+
+- `arm9.bin` was compressed. Decompressing it resolved the runtime mismatch.
+- 460 RTTI classes recovered across ARM9 + 34 overlays (`research/code/rtti_classes.txt`).
+- Scene manager: `scene_overlay 0x0203D9BC`, `scene_create 0x0203DEE0`. All 58 scene IDs are mapped to an overlay, a constructor and a class.
+- `CCaptureScene` is scene `2` (ov3, ctor `0x020D013C`). `0x020D012C` is only the base ctor.
+- Ordinary chain: field state 3 `CFieldToCaptureState` → scene `0x29` `CBossProduceScene` → scene `2` → scene `0x1B`.
+- Resident capture request block: `0x020B7AB8` (= transition block `0x020B7A7C + 0x3C`). `+8` = return scene, `+0` = BGM kind, `+2` = arena/BG.
+- `LoadCapturePokemon` is a resource preloader, not a target selector.
+- Ov2/ov3/ov22 overlap in RAM. Use the resident breakpoints in `tools/gdb/ordinary_capture_trace.gdb`.
+
+---
+
+### Second pass (same day): capture setup and trigger
+
+- Resident `CaptureSetup` struct at `0x020B797C`: `+0` count, `+0xC` entries `{u32, u16 dexId, u16, u16}`, `+0x13C` BGM, `+0x13E` arena, `+0x144` return scene, `+0x15C` result. API: `0x020418D4` clear, `0x02041998` add.
+- Field states: 3 = `CFieldToCaptureState`, 7 = `CFieldAuthoringEventState`. Pending state is at `[*0x021260E0 + 0x1F18]`.
+- Field script group-3 capture commands `0x0CA2–0x0CB2` decoded. The common script `sToCapture` calls `0x102E`, which is the only single-player writer of field state 3.
+- Script symbol tables decoded (base-40 names). `tools/analyze_field_captures.py` finds **158 started field captures in 60 scripts**, labelled by event (`M02_00_BT473` …) and named via localization file `0268`.
+- `0x02041998` is resident and called for every capture target, so it's the ideal dynamic breakpoint (already in the GDB script).
+- Stream count is 1,683 (both tools agree; the earlier "1,695" figure was wrong). Sky `1C10` transitions are still 20.
+
+---
+
+### Third pass (same day): wild placements
+
+- Map placement packages: ACF entries 7341–8130 (NARC → `MPIF` + `LYR` → NARC → layer NARC). Layer type 1 = `CMapPlacementDataLayerEnemy`, 26-byte records `{x, z, f2, f3, rangerId, …}`.
+- Map table `2482.MPPS`: placement entry = `rec+8 + (rec[0] ? 0x1E1B : 0x1CAD)`, map name `m{rec[1]:03}_{rec[2]:02}`.
+- `tools/extract_wild_spawns.py`: **2,549 placements, 505 Ranger IDs**, 968 with resolved map names. Cross-checked against the scripted `M02_00_BT*` captures.
+- Ranger Pokémon ID (0–769) ≠ Dex. `FPKD+0x2E` gives the Dex number (`tools/ranger_ids.py`), confirmed by all 24 `BTnnn` labels and by all sky captures resolving to flyers. The intro sky target is Ranger ID 13 = **Pidgey**, not Spearow.
+- `data/mapz/*.acz` = Nintendo Huffman-8 map geometry (`MBG0`); decoder in `tools/nds_huffman.py`.
+
+---
+
+### Fourth pass (same day): IDs, maps, patching, live proof of concept
+
+- Ranger ID → Dex via `FPKD+0x2E` (`tools/ranger_ids.py`). It's confirmed by all 24 `BTnnn` labels, by every sky capture being a flyer, and **on screen** ("PIDGEY" for ID 13).
+- Script → map: map script = MPPS `rec+0xA + 8`. Chapter scripts → chapter start map via `2483.CHPT`. 297 of 299 scripted targets now have a map or chapter map.
+- Placement set `0x1E1B` (entries 7707–8130) = multiplayer (`CCommuContext`).
+- `tools/patch_code_rom.py`: patch ARM9/overlays and store them uncompressed. Boot-tested.
+- `tools/emu/`: headless DeSmuME + GDB. **`capture_select_poc.py` launches a real capture battle of any Ranger ID from the title screen**, with no code patches (`docs/scene_system.md` §9).
+
+---
+
+## Final stopping point — 2026-11-17
+
+> **Capture Select is proven in the emulator:** filling `CaptureSetup` (`0x020B797C`) and returning scene `2` from the title scene starts a normal capture of any Ranger ID. Every capture source is extracted and named (`research/capture/capture_database.csv`). Next: turn the PoC into a real ROM patch (a menu entry/scene that does the same thing, via `tools/patch_code_rom.py`), choosing arena/BGM per database entry.

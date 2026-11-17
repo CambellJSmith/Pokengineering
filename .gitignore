@@ -11,3 +11,6 @@
 # Python cache
 __pycache__/
 *.pyc
+
+# Regenerable analysis outputs (snapshots are tracked under research/capture/)
+/research/capture/generated/
