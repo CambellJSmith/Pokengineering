@@ -34,6 +34,7 @@ research/capture/field_capture_sequences_2026-11-17.csv
 tools/extract_wild_spawns.py      (2026-11-17)
 tools/nds_huffman.py              (2026-11-17)
 tools/build_capture_database.py   (2026-11-17)
+tools/ranger_ids.py               (2026-11-17)
 research/capture/capture_database.csv (v1)
 research/capture/wild_spawns_2026-11-17.csv
 ```
@@ -272,6 +273,8 @@ Decoded overlays under `work/code_analysis/executables/overlays/` are analysis c
 ## 6. Spearow trace: important false leads already ruled out
 
 Intro target: **Spearow**, National Dex `21 / 0x0015`.
+
+> **2026-11-17 correction:** the script's capture ID is Ranger ID `13`, which `FPKD+0x2E` maps to **Dex 16 Pidgey** (model 8). No Ranger ID maps to Dex 21, so there's no Spearow capture data in the game. Treat "Spearow" below as "the intro sky target (Pidgey)" until rechecked in-game. See `docs/scene_system.md` section 6c.
 
 ### `0x0222F104` is display identity only
 
@@ -797,9 +800,9 @@ Important quirks:
 
 Statically, every capture source is now located and extracted (`docs/scene_system.md` sections 4–6). Next:
 
-1. **Refine the capture database.** v1 exists: `python3 tools/build_capture_database.py` → `research/capture/capture_database.csv` (2,868 rows: sky 20, scripted 299 targets, wild 2,549; 526 Ranger IDs). Open items: resolve sky target IDs (`1C12`/`1C54` args aren't Dex numbers), map non-`Mnn_ss_` script labels (`MQ…`, `C33EVENT…`, …) to maps/quests, and decode the placement condition fields so roaming variants can be deduplicated into definitions.
+1. **Refine the capture database.** v1 exists: `python3 tools/build_capture_database.py` → `research/capture/capture_database.csv` (2,868 rows: sky 20, scripted 299 targets, wild 2,549; 534 Ranger IDs = 304 species, all named via `tools/ranger_ids.py`). Open items: map non-`Mnn_ss_` script labels (`MQ…`, `C33EVENT…`, …) to maps/quests, and decode the placement condition fields so roaming variants can be deduplicated into definitions.
 2. Resolve the 1,581 wild placements in packages that no `MPPS` record points at (other placement sets for quests, missions and multiplayer).
-3. Name Ranger IDs 494–769 (forms/variants): find the form/name table or the text-ID field (`FPKD` `2480`, `CPOK` `6846`).
+3. Work out what distinguishes variant Ranger IDs of the same species (`FPKD`/`CPOK` fields: HP, difficulty, behaviour).
 4. Optional dynamic confirmation: `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon, and expect `[CAP_ADD] dex=…` and scenes `1 → 0x29 → 2 → 0x1B → 1`.
 5. Capture Select: from a menu scene, `CaptureSetup_Clear/Add(0x020B797C, id, …)`, set BGM `+0x13C`, arena `+0x13E` and return scene `+0x144`, then return scene `0x29` or `2` (`docs/scene_system.md` section 8).
 6. BLZ repacking for ARM9 and overlays, then add **Capture Select** to the main menu.
@@ -844,7 +847,7 @@ python3 tools/scene_map.py --csv research/capture/scene_table.csv
 - Map placement packages: ACF entries 7341–8130 (NARC → `MPIF` + `LYR` → NARC → layer NARC). Layer type 1 = `CMapPlacementDataLayerEnemy`, 26-byte records `{x, z, f2, f3, rangerId, …}`.
 - Map table `2482.MPPS`: placement entry = `rec+8 + (rec[0] ? 0x1E1B : 0x1CAD)`, map name `m{rec[1]:03}_{rec[2]:02}`.
 - `tools/extract_wild_spawns.py`: **2,549 placements, 505 Ranger IDs**, 968 with resolved map names. Cross-checked against the scripted `M02_00_BT*` captures.
-- Ranger Pokémon ID = Dex for 1–493; 494–769 are Ranger-specific. Tables: `FPKD` (2480) and `CPOK` (6846), 770 entries each.
+- Ranger Pokémon ID (0–769) ≠ Dex. `FPKD+0x2E` gives the Dex number (`tools/ranger_ids.py`), confirmed by all 24 `BTnnn` labels and by all sky captures resolving to flyers. The intro sky target is Ranger ID 13 = **Pidgey**, not Spearow.
 - `data/mapz/*.acz` = Nintendo Huffman-8 map geometry (`MBG0`); decoder in `tools/nds_huffman.py`.
 
 ---

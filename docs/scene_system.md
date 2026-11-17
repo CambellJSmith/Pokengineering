@@ -169,7 +169,7 @@ struct is what carries the targets across the ov2 → ov22 → ov3 swap.
   +0x008 u8
   +0x00C entry[count], stride 0xC:
          +0 u32  a        (wild: CFieldWildPokemon+0x08)
-         +4 u16  pokemonId  National Dex number (names: localization 0268)
+         +4 u16  rangerId   Ranger Pokemon ID (section 6c; NOT a Dex number)
          +6 u16  b        (wild: kind from +0x85F, 2 if a save flag is set)
          +8 u16  c
   +0x06C 4 x 0x34-byte player/styler records (copied from save 0x020BD32C)
@@ -246,9 +246,12 @@ python3 tools/analyze_field_captures.py
 Result: **60 scripts, 164 setup sequences, 158 of which end in CAP_START**.
 CSVs go to `research/capture/generated/field_capture_{calls,sequences}.csv`, and
 a snapshot is tracked at `research/capture/field_capture_sequences_2026-11-17.csv`.
-The targets include legendaries (Raikou, Entei, Lugia, Ho-Oh, Articuno, Zapdos,
-Jirachi), bosses and multi-target captures (e.g. six Tauros in
-`MQ01_EV002_0`).
+Targets are Ranger IDs, named via section 6c: for example `M02_00_BT473`
+Mamoswine, `BT157` Typhlosion, `BT160` Feraligatr, `BT245` Suicune and
+`BT131` Lapras, plus multi-target captures such as six Sunkern in
+`MQ01_EV002_0`. The `BTnnn` number in an event label is the target's
+National Dex number (24 of 24 labels match), which independently confirms the
+ID→Dex mapping.
 
 ## 6. Free-roaming wild spawns — solved (statically)
 
@@ -278,30 +281,54 @@ loads placement entry `rec+8 + (rec[0] ? 0x1E1B : 0x1CAD)` for map
 `mNNN_SS` (the geometry is in `data/mapz/mNNN_SS.acz`, Nintendo Huffman-8;
 `tools/nds_huffman.py`).
 
-**Ranger Pokémon ID**: equals the National Dex number for 1–493. Values
-494–769 are Ranger-specific forms and variants. Per-ID tables: `2480.FPKD`
-(resource `0x9B0`, field data, `0x58` × 770, → `0x020BD37C`) and `6846.CPOK`
-(resource `0x1ABE`, capture data, `0x50` × 770, → `0x020B7C78`). Neither
-stores a base Dex number, so IDs above 493 aren't named yet.
+Placement records, CaptureSetup entries and sky capture records all carry a
+**Ranger ID** (section 6c), not a Dex number.
 
 ```bash
 bash tools/extract_game_data.sh          # once
 python3 tools/extract_wild_spawns.py
 ```
 
-Result: **2,549 wild placements in 559 packages, 505 distinct IDs (198 above
-493)**. 968 of them resolve to a map name through MPPS. Snapshot:
+Result: **2,549 wild placements in 559 packages, 505 distinct Ranger IDs (298
+species)**. 968 of them resolve to a map name through MPPS. Snapshot:
 `research/capture/wild_spawns_2026-11-17.csv`.
 
-Cross-check: `m002_00`'s placements include Glalie, Mothim, Combee, Floatzel
-and Abra, which are exactly the scripted captures `M02_00_BT473/157/160/245/131`.
+Cross-check: `m002_00`'s placements include Ranger IDs 362/414/415/419/63,
+which are exactly the targets of the scripted captures `M02_00_BT473/157/160/245/131`.
 Those placements have `f2 = 2/3`, while plain roaming ones have `f2 = 0`.
+
+## 6c. Ranger Pokémon IDs → National Dex — solved
+
+Every capturable Pokémon, including per-encounter variants, has a **Ranger ID**
+0–769. It indexes two parallel tables:
+
+| table | resource | runtime | record |
+|---|---|---|---|
+| `2480.FPKD` (field data) | `0x9B0` | `0x020BD37C` | `0x58` × 770, **`+0x2E` u16 = National Dex** |
+| `6846.CPOK` (capture data) | `0x1ABE` | `0x020B7C78` | `0x50` × 770, `+0x0C` = model index (sprite set = ACF entry `0x6B7 + model`) |
+
+`tools/ranger_ids.py` gives `dex_of(id)` and `name_of(id)` (names from
+localization file 0268, which is Dex-indexed).
+
+It was found by brute-force matching against rendered sprites and confirmed
+twice: (1) all 24 `BTnnn` event labels equal the mapped Dex number; (2) all
+20 sky (`1C10`) captures resolve to flying Pokémon (Pidgey, Pidgeotto,
+Pidgeot, Noctowl, Crobat, Skarmory, Pelipper, Staravia, Drifblim, Togekiss,
+Charizard, Latias, Latios, Shaymin). IDs 381–384 have Dex values 900/901 and
+no Pokémon sprite, so they're special non-Pokémon targets.
+
+> **Correction to the 2026-10-04 notes:** the first sky script (ACF
+> `+0xF844C`, `1C54(8, 13, 0)`) captures Ranger ID **13 = Pidgey** (model 8,
+> which matches the traced `{0x6BF = 0x6B7 + 8}` entry), and **no Ranger ID maps
+> to Dex 21 (Spearow)**. The old "Spearow / 21 at `0x0222F104`" identification
+> needs an in-game recheck. The script/offset facts themselves are unaffected.
 
 ## 6b. Still open
 
 1. 1,581 placements in packages that no MPPS record points at (other
    placement sets, quests and missions, multiplayer).
-2. Names for Ranger IDs 494–769 (need the name/form table or the text-ID field).
+2. What distinguishes variant IDs of the same species (e.g. Pidgey 11/12/13/389/440/506):
+   difficulty, HP and behaviour in `FPKD`/`CPOK`.
 3. Meaning of the Enemy fields `f2,f3,f5,f8..f15` (probably appearance
    conditions/flags and probabilities; `f13..f15` are 0/50/100).
 4. Label states 1..12 of `CCaptureScene`.

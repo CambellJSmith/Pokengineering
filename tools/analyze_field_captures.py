@@ -6,7 +6,7 @@ table ov2:0x02125860 (handler = table[index]). Handlers 0xA2..0xB2 manipulate
 the resident capture-setup struct at 0x020B797C (see docs/scene_system.md):
 
   0x0CA2 CAP_CLEAR            0x020418D4(setup)
-  0x0CA5 CAP_ADD(id)          0x02041998(setup, id, 0, 0, 0)
+  0x0CA5 CAP_ADD(id)          0x02041998(setup, id, 0, 0, 0)   id = Ranger ID (tools/ranger_ids.py)
   0x0CA6 CAP_ADD2(id, a)      0x020419D0(setup, id, a)  -> entry.u16 +6 = a
   0x0CA7 CAP_BGM(v)           setup+0x13C = v   (BGM kind 0..10, ov3 0x020D351C)
   0x0CA8 CAP_FLAG2            setup+0x142 |= 2
@@ -37,6 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import analyze_capture_scripts as acs  # noqa: E402
+import ranger_ids  # noqa: E402
 
 NAMES = {
     0x0CA2: "CAP_CLEAR", 0x0CA5: "CAP_ADD", 0x0CA6: "CAP_ADD2", 0x0CA7: "CAP_BGM",
@@ -47,7 +48,6 @@ NAMES = {
 
 
 B40 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_-/"
-NAME_FILE = ROOT / "work" / "localization" / "json" / "0268.json"
 
 
 def b40_word(v):
@@ -82,12 +82,6 @@ def label_for(syms, off):
         else:
             break
     return best
-
-
-def pokemon_names():
-    if NAME_FILE.exists():
-        return {int(k): v for k, v in json.loads(NAME_FILE.read_text()).items() if k.isdigit()}
-    return {}
 
 
 def fmt_args(call):
@@ -127,9 +121,8 @@ def main():
     scripts = acs.scan(acf, meta, 500)
     print(f"script streams: {len(scripts)}")
 
-    names = pokemon_names()
-    if not names:
-        print("note: run tools/extract_localization.sh to add Pokemon names (file 0268)")
+    if not ranger_ids.available():
+        print("note: run tools/extract_game_data.sh (+ extract_localization.sh) to name Ranger IDs")
 
     def name_targets(q):
         out = []
@@ -137,7 +130,7 @@ def main():
             if c["selector"] not in (0x0CA5, 0x0CA6) or not c["args"]:
                 continue
             pid = c["args"][0]
-            out.append(f"{pid}:{names.get(pid, '?')}" if names else str(pid))
+            out.append(f"{pid}:{ranger_ids.name_of(pid)}" if ranger_ids.available() else str(pid))
         return " | ".join(out)
 
     rows, seq_rows = [], []

@@ -13,8 +13,8 @@ Format (recovered from ARM9, see docs/scene_system.md section 6):
       8 FloorAttribute  9 WallAttribute  10 Shadow
   Enemy records: field descriptor ARM9 0x0209C370 (14 fields) unpacked by
   0x0203F5B8 into 0x1E-byte runtime records. On disk (26 bytes):
-      s16 x, s16 z, u8 f2, u8 f3, u16 dex, u16 f5, u16 f8..f15
-  At spawn (ov2 0x020D6F2C / 0x020D741C) record.dex becomes
+      s16 x, s16 z, u8 f2, u8 f3, u16 rangerId, u16 f5, u16 f8..f15
+  At spawn (ov2 0x020D6F2C / 0x020D741C) record.rangerId becomes
   CFieldWildPokemon+0x85C, which wild contact passes to CaptureSetup_Add.
 
 Map names: entry 2482.MPPS (resource 0x9B2, loaded into 0x020B7954) has 0x80-byte
@@ -33,10 +33,13 @@ import csv
 import json
 import struct
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ranger_ids  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 ARCHIVE = ROOT / "work" / "game_acf" / "archive"
-NAMES = ROOT / "work" / "localization" / "json" / "0268.json"
 LAYER_NAMES = {1: "Enemy", 2: "Npc", 3: "Object", 4: "EventRect", 5: "StartPoint",
                6: "RunawayPoint", 8: "FloorAttribute", 9: "WallAttribute", 10: "Shadow"}
 ENEMY = struct.Struct("<hhBBHH8H")
@@ -92,9 +95,6 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, default=ROOT / "research" / "capture" / "generated")
     args = ap.parse_args()
-    names = {}
-    if NAMES.exists():
-        names = {int(k): v for k, v in json.loads(NAMES.read_text()).items() if k.isdigit()}
 
     maps = map_index()
     rows, packages, layer_counts = [], 0, collections.Counter()
@@ -121,7 +121,8 @@ def main():
                     "mpps_records": " ".join(str(i) for i, _ in maps.get(int(path.stem), [])),
                     "map_w": w, "map_h": h, "index": i,
                     "x": r[0], "z": r[1], "f2": r[2], "f3": r[3],
-                    "dex": r[4], "name": names.get(r[4], ""), "f5": r[5],
+                    "ranger_id": r[4], "dex": ranger_ids.dex_of(r[4]), "name": ranger_ids.name_of(r[4]),
+                    "f5": r[5],
                     **{f"f{8 + k}": r[6 + k] for k in range(8)},
                 })
 
@@ -131,11 +132,12 @@ def main():
         wr = csv.DictWriter(fh, fieldnames=list(rows[0]))
         wr.writeheader()
         wr.writerows(rows)
-    species = collections.Counter(r["dex"] for r in rows)
+    species = collections.Counter(r["ranger_id"] for r in rows)
+    dexes = {r["dex"] for r in rows if r["dex"] is not None and r["dex"] < 900}
     print(f"placement packages: {packages}")
     print(f"layer counts: {dict(layer_counts)}")
     print(f"wild placements: {len(rows)} in {len({r['acf_entry'] for r in rows})} packages")
-    print(f"distinct Ranger Pokemon IDs: {len(species)} ({sum(1 for k in species if k > 493)} above 493 = Ranger-specific forms)")
+    print(f"distinct Ranger IDs: {len(species)}; distinct species (Dex): {len(dexes)}")
     named = sum(1 for r in rows if r["map"])
     print(f"placements with a resolved map name: {named}/{len(rows)}")
     print(f"wrote {out}")
