@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Build the Capture Select ROM and launch it in DeSmuME.
-#   tools/play_capture_select.sh            # build (if needed) + launch
-#   REBUILD=1 tools/play_capture_select.sh  # force a full rebuild
+#   ./play_capture_select.sh            # build (if needed) + launch
+#   REBUILD=1 ./play_capture_select.sh  # force a full rebuild
 # Needs: python3, keystone-engine (pip), console-setup-linux (menu font), desmume.
 set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 BASE=work/debug/guardian_signs_debug.nds
 PATCH=work/capture_select/capture_select_patch.json
