@@ -477,9 +477,19 @@ python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \
 ```
 
 **Controls on the title/demo screen:** SELECT opens the **Capture Select**
-menu on the bottom screen. UP/DOWN move (hold to repeat), LEFT/RIGHT or L/R
-page by 20, **A** starts the highlighted battle and **B** closes the menu
-(the title reloads). After a battle the game returns to the title (`0x2C`).
+menu on the bottom screen (the top screen goes navy). UP/DOWN move (hold to
+repeat), LEFT/RIGHT page by 20, **L/R jump to the previous/next section**
+(story & quest events → tutorials → sky → co-op → wild → extra), **START
+cycles the styler preset** (NORMAL / STRONG / MAX, shown in the header),
+**A** starts the highlighted battle and **B** closes the menu. The footer
+shows the position (`156/764`). **After a battle the menu reopens by itself
+on the same entry** (about 30 frames after the title reloads), so battles can
+be played back to back.
+
+Styler presets write the player record before the battle: level →
+`CaptureSetup+0x6C`, energy → `+0x75/+0x76` (STRONG 25/60, MAX 50/99;
+NORMAL keeps the Clear defaults 1/10). Verified in the emulator: `+0x75/76 =
+99` shows `099/099` energy; Clear's level 1 matches "Styler Level 01".
 
 **Menu entries (764)**, generated from `research/capture/capture_database.csv`
 (full list: `work/capture_select/capture_select_list.csv`):
@@ -559,7 +569,12 @@ with `tools/emu/batch_battles.py`; screenshots are local only):
 - Menu state is at `CaptureSetup+0x128` (unused tail of player record 3,
   which only multiplayer uses and Clear doesn't touch): `+0` index, `+2` top,
   `+4` previous keys, `+6` open, `+7` dirty, `+8` saved VRAMCNT_C,
-  `+9` key-repeat counter. All 8 entry slots stay free for targets.
+  `+9` key-repeat counter, `+10` reopen counter (set by a launch; the menu
+  reopens once it reaches 32 title frames), `+11` styler preset. All 8 entry
+  slots stay free for targets.
+- While open, the menu also blanks the top screen (sub engine DISPCNT
+  `0x10000`, navy backdrop). After a capture, the title runs a transition that
+  maps VRAM D to the sub engine and mirrors the bottom screen there.
 - Keystone pitfall: a conditional `bl` to a forward label assembled as a
   branch-to-self (hung the menu). The builder now rejects any self-branch.
 
