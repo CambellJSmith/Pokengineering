@@ -562,6 +562,15 @@ setup_display:
     ldr  r0, =0x04000242
     mov  r1, #0x89
     strb r1, [r0]
+    mov  r1, #0
+    ldr  r0, =0x0400006c
+    strh r1, [r0]
+    ldr  r0, =0x0400106c
+    strh r1, [r0]
+    ldr  r0, =0x04000050
+    strh r1, [r0]
+    ldr  r0, =0x04001050
+    strh r1, [r0]
     ldr  r0, =0x04000000
     ldr  r1, =0x00010805
     str  r1, [r0]
@@ -818,9 +827,10 @@ battle_table:
 
 # Title menu (CDemoMenuState, ov28): the third button (selection 2) was
 # "Ranger Net" (scene 0x2B; the online service is closed). Its handler at
-# 0x020D96B8 is replaced with: request the Capture Select menu (reopen counter
-# STATE+10 = 1, so the title wrapper opens it ~32 frames later), then the
-# normal end of the update. The label is changed in the text archive by
+# 0x020D96B8 is replaced with: set the reopen counter (STATE+10 = 1) and
+# reload the title scene (next scene = 0x2C, like New Game sets 0x1C), so the
+# fresh title opens the menu ~32 frames later, exactly as after a battle.
+# (Opening it in place left the title's fade-out darkening the screen.) The label is changed in the text archive by
 # play_capture_select.sh / tools/capture_select/relabel_title_button.sh.
 RANGER_NET_HANDLER = 0x020D96B8
 RANGER_NET_BYTES = bytes.fromhex("d00195e5000050e32b00a0b3d00185b5")
@@ -833,10 +843,12 @@ def title_button_patches(ks, at):
     assert image[off:off + 16] == RANGER_NET_BYTES, "unexpected Ranger Net handler"
     code, _ = ks.asm(f"""
         ldr   r1, ={STATE:#x}
-        ldrb  r0, [r1, #10]
+        mov   r0, #1
+        strb  r0, [r1, #10]
+        ldr   r0, [r5, #0x1d0]
         cmp   r0, #0
-        moveq r0, #1
-        strbeq r0, [r1, #10]
+        movlt r0, #{RETURN_SCENE:#x}
+        strlt r0, [r5, #0x1d0]
         bx    lr
     """, at)
     hook, _ = ks.asm(f"bl {at:#x}\nb {MENU_STATE_DONE:#x}", RANGER_NET_HANDLER)
