@@ -5,8 +5,13 @@
 # Requires: apt-get install desmume gdb-multiarch xvfb imagemagick
 set -euo pipefail
 ROM="$1"; SCRIPT="$2"; SECS="${3:-120}"; LOG="${4:-/dev/stdout}"; SHOTS="${5:-}"
-PORT="${PORT:-3333}"; DISP="${DISP:-:99}"; SHOT_EVERY="${SHOT_EVERY:-5}"
+PORT="${PORT:-$((3400 + RANDOM % 500))}"; DISP="${DISP:-:99}"; SHOT_EVERY="${SHOT_EVERY:-5}"
 export SDL_AUDIODRIVER=dummy
+# clean up leftovers from an earlier run (stale display lock / emulator on the port)
+pkill -f "desmume-cli --arm9gdb=$PORT" 2>/dev/null || true
+pkill -f "Xvfb $DISP" 2>/dev/null || true
+sleep 1
+rm -f "/tmp/.X${DISP#:}-lock" "/tmp/.X11-unix/X${DISP#:}" 2>/dev/null || true
 Xvfb "$DISP" -screen 0 640x480x24 >/dev/null 2>&1 &
 XV=$!
 sleep 1
@@ -22,7 +27,7 @@ if [[ -n "$SHOTS" ]]; then
 fi
 cleanup() { kill $EMU $XV ${SHOOT:-} 2>/dev/null || true; }
 trap cleanup EXIT
-sleep 3
+sleep 4
 timeout -k 5 "$SECS" gdb-multiarch -q -nx -batch \
     -ex "set architecture armv5te" -ex "set pagination off" -ex "set confirm off" \
     -ex "target remote localhost:$PORT" -x "$SCRIPT" >"$LOG" 2>&1 || true

@@ -15,6 +15,8 @@ Run (headless):
 import os
 RANGER_ID = int(os.environ.get("RANGER_ID", "13"), 0)
 RETURN_SCENE = int(os.environ.get("RETURN_SCENE", "0x25"), 0)
+SCRIPT_150 = int(os.environ.get("SCRIPT_150", "0"), 0)
+COUNT = int(os.environ.get("COUNT", "1"), 0)
 import gdb, time
 def reg(r): return int(gdb.parse_and_eval("$"+r)) & 0xffffffff
 def w32(a,v): gdb.execute("set {unsigned int}0x%x = 0x%x" % (a, v & 0xffffffff))
@@ -39,6 +41,8 @@ def capture_setup(rid, ret_scene):
     w32(SETUP,1); e=SETUP+0xC; w32(e,0); w16(e+4,rid); w16(e+6,0); w16(e+8,0)
     # return scene (request+8 = setup+0x144)
     w32(SETUP+0x144, ret_scene)
+    w32(SETUP, COUNT)
+    w32(SETUP+0x150, SCRIPT_150)
 
 gdb.execute("break *0x0203DEE0")   # scene_create
 gdb.execute("break *0x0207DF7C")   # FS_LoadOverlay

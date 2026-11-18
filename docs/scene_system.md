@@ -344,9 +344,46 @@ no Pokémon sprite, so they're special non-Pokémon targets.
 > to Dex 21 (Spearow)**. The old "Spearow / 21 at `0x0222F104`" identification
 > needs an in-game recheck. The script/offset facts themselves are unaffected.
 
+## 6e. More capture sources (2026-11-18)
+
+| source | data | how it starts | count |
+|---|---|---|---|
+| **Capture tutorials** | capture scripts `0x5E1 + n` (ACF 1506–1512, symbols `INIT`/`MAIN`) | field script `CAP_CLEAR; CAP_150=n; CAP_START`. `CCaptureContext::Init` (ov3 `0x020D20BC`) loads the script when `CaptureSetup+0x150` (= request `+0x14`) > 0, and it spawns its own Pokémon ("The Capture tutorial has begun.") | 7 (5 used by story events: n = 2, 3, 4, 5, 7) |
+| **Sky enemies (free flight)** | `9529.SPKD` (resource `0x2539` → `0x020BD494`), 16-byte records, `+4` = Ranger ID | sky command `1C76(actor, spkdIndex, …)` (ov3 `0x02103D64`) spawns an object with Ranger ID at `+0x9C6`. On capture it adds itself through ov3 `0x02111C24` → `0x02116774` | 33 records / 16 IDs (new: Latios, Drifloon, Honchkrow, Chatot) |
+| **Co-op captures** | `2488.MPCP` (resource `0x9B8` → `0x020BD4C0`), 48-byte records, `+0` = Ranger ID + stats | multiplayer (ov26/ov3) | 223 IDs (42 not seen anywhere else) |
+
+**Capture-script commands that add targets mid-capture:** `3C03` (add,
+handler ov3 `0x020FE094` → `CaptureSetup_Add`) and `3C05` (add + spawn,
+`0x020FE0E8`); group 8 aliases them as `2005`/`2007`, because the group-15 table
+`0x0211C610` is the group-8 table `0x0211C608` + 2 entries. A sweep of all
+1,683 scripts finds them **only in the tutorial scripts**:
+
+| tutorial | capture script | targets added |
+|---|---|---|
+| 1 | 1506 | none (explanation only) |
+| 2 | 1507 | Pikachu (386) ×2, spawned |
+| 3 | 1508 | Cyndaquil (391); verified in emulator: "The Poké Assist tutorial has begun." |
+| 4 | 1509 | Pikachu (388) |
+| 5 | 1510 | Gligar (390) |
+| 6 | 1511 | Cyndaquil (391) |
+| 7 | 1512 | Pikachu (386) |
+
+So there are no other hidden mid-battle reinforcements.
+
+**Intrusion (`CCaptureIntrusionState`) isn't a Pokémon source.** It iterates
+3 fixed slots of the `0x88`-stride capture-before records at preset screen
+positions: other players joining a co-op capture.
+
+`tools/build_capture_database.py` now includes these sources (`sky_enemy`,
+`coop`, `tutorial` with its targets): 3,132 rows, **584 Ranger IDs / 306 species**.
+
 ## 6b. Still open
 
 0. Exact event maps inside chapter scripts (currently only the chapter start map).
+0a. Exact event maps inside chapter scripts need runtime state. Map
+    `EventRect` layers hold `{x, z, w, h, eventId}` (ids ~300+), which the field
+    registers in an event manager (ov2 `0x020D7B64` → `0x02105A28`); the
+    chapter script decides what each id does at run time.
 
 1. Map names for the **multiplayer placement set** (entries 7707–8130, 1,581
    placements). `CCommuContext` (ov2 `0x0210E89C`) sets the selector byte, so
@@ -444,14 +481,66 @@ menu on the bottom screen. UP/DOWN move (hold to repeat), LEFT/RIGHT or L/R
 page by 20, **A** starts the highlighted battle and **B** closes the menu
 (the title reloads). After a battle the game returns to the title (`0x2C`).
 
-**Menu entries (532)**, generated from `research/capture/capture_database.csv`
+**Menu entries (764)**, generated from `research/capture/capture_database.csv`
 (full list: `work/capture_select/capture_select_list.csv`):
-- every distinct scripted field capture, with all of its targets (up to 7),
-  BGM and arena from the original script, labelled with the event
-  (e.g. `006 Sharpedo x2 C007_EV008`, `007 Lapras C007_START`);
-- every sky (1C10) capture (`... SKY`);
-- every remaining wild Ranger ID (`... WILD m010_02`, or `co-op` for the
-  multiplayer set).
+- every distinct scripted field capture with **all** its targets (up to 8)
+  and options (BGM, arena, flags `+0x142`, `+0x140`, `+0x154`, `+0x156`),
+  labelled with the event (e.g. `041 Beldum x8 C031_AF008_1`);
+- the 7 capture tutorials (`Capture tutorial TUTORIALn`, `+0x150 = n`);
+- every sky capture: scripted `1C10` and free-flight `SPKD` enemies (`SKY`);
+- every co-op capture Pokémon (`CO-OP`, from `MPCP`);
+- every remaining wild Ranger ID (`WILD m010_02` …);
+- **EXTRA**: every other Ranger ID with capture data but no trigger found
+  (182 entries, `EXTRA #374` …). This adds the three species no source
+  covered, Palkia (369, 428), Heatran (370, 371, 429) and Giratina
+  (373, 374, 431, 432, 453; both formes), plus leftover variants of other
+  species. **All 309 species with capture data are now selectable.**
+  Verified: `EXTRA #374` → GIRATINA (Origin Forme) boss capture. The other
+  EXTRA entries haven't been tried one by one.
+
+**Arena backgrounds (2026-11-18).** In the field, `CFieldToCaptureState::Enter`
+asks the field context (vfunc `+0x50`, ov2 `0x020D89DC`) for the arena when
+`CaptureSetup+0x13E` is `0xFFFF`. It uses the current map's MPPS record:
+byte `+0x6C + floorType` for floor types 0–14, `+0x7B` for 15–22, `+0x7C` for
+23–30, `+0x7A` for 31 (floor type from the `FloorAttribute` placement layer
+at the player). From the title there's no field, so the menu writes the
+arena itself: the script's `CAP_ARENA` if set, else the battle's map default
+`MPPS +0x6C` (the scripted event's map, else its chapter start map, or the wild
+Pokémon's map), else fallback arena 13. All 582 battles now get a background
+(319 from their map, the rest from the fallback). Verified: `001 Pichu`
+(m002_00, arena 13) and a `SKY` Starly (fallback) both show a sand-and-grass
+field instead of black.
+
+**Arena catalog** (all 66 arena IDs used by MPPS or scripts, screenshotted
+with `tools/emu/batch_battles.py`; screenshots are local only):
+
+| look | arena IDs |
+|---|---|
+| grass / meadow | 0, 15, 16, 19, 77, 78 |
+| sand, sand + grass | 2, 13, 67, 74 |
+| dirt / earth | 4, 21, 23, 24, 25, 33, 44, 45, 49, 50, 79, 80 |
+| water (sea bed, ocean, lake, cave water) | 5, 9, 51, 39 |
+| stone, ruins, tiles | 6, 7, 8, 14, 17, 18, 20, 41, 42, 43, 52, 65, 69, 70, 71, 72, 75, 76, 82 |
+| indoor (wood, carpet, mats, metal grates) | 11, 12, 27, 32, 34, 35, 37, 38, 66, 68 |
+| snow / ice | 26, 28, 36, 46 |
+| dark cave | 31 |
+| volcanic | 10, 40 |
+| **sky (clouds)** | **48** |
+| grey fog | 47 |
+| ornate temple | 73, 81 |
+
+**Arena choice per battle (2026-11-18 review)**, first match wins
+(`arena_from` column in `capture_select_list.csv`):
+1. `script`: the event's own `CAP_ARENA` (3 battles);
+2. `map`: the battle's map default (321);
+3. `manual:sky`: SKY battles → 48 (15);
+4. `manual:legendary`: Heatran → 40, Giratina → 31, Palkia/Dialga/Arceus →
+   81, Mew → 17, Deoxys → 48, Shaymin → 77 (22);
+5. `manual:sky-species`: species seen only in sky captures (Pidgeotto,
+   Skarmory, Honchkrow, Chatot, Togekiss…) → 48 (9);
+6. `habitat`: the most common arena among the maps where the same species is
+   placed or scripted (393; co-op and EXTRA entries);
+7. `fallback` 13: only `Tutorial 1` (its area matches tutorial 2's).
 
 **Implementation** (`tools/capture_select/build_patch.py`):
 - ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020F76AC`
@@ -467,10 +556,10 @@ page by 20, **A** starts the highlighted battle and **B** closes the menu
   changes.
 - A: `CaptureSetup_Clear`, `CaptureSetup_Add3` for each target, BGM `+0x13C`,
   arena `+0x13E`, return scene `+0x144 = 0x2C`; returns scene `2`.
-- Menu state is in `CaptureSetup` entry 7 (`+0x60` index, `+0x62` top,
-  `+0x64` previous keys, `+0x66` open, `+0x67` dirty, `+0x68` saved VRAMCNT_C,
-  `+0x69` key-repeat counter). That entry is unused for ≤7 targets and
-  isn't touched by Clear.
+- Menu state is at `CaptureSetup+0x128` (unused tail of player record 3,
+  which only multiplayer uses and Clear doesn't touch): `+0` index, `+2` top,
+  `+4` previous keys, `+6` open, `+7` dirty, `+8` saved VRAMCNT_C,
+  `+9` key-repeat counter. All 8 entry slots stay free for targets.
 - Keystone pitfall: a conditional `bl` to a forward label assembled as a
   branch-to-self (hung the menu). The builder now rejects any self-branch.
 
@@ -480,7 +569,35 @@ SELECT draws the menu; DOWN ×3 moves the highlight to `004 Celebi C006_EV005`;
 A loads `CaptureSetup count=1 ids=[193] ret=0x2C` and a CELEBI boss capture
 runs.
 
-**Not yet verified:** finishing a capture with real input (result/browser
+2026-11-18 additions, verified the same way: `041 Beldum x8` → `count=8`
+(eight Beldum on screen); `145 Capture tutorial TUTORIAL1` → `count=0
+s150=1`; `162 Latios SKY` → LATIOS boss capture; `002 Buizel+Croagunk` →
+`flags=0x2 v154=13 bgm=1` copied from the event.
+
+**Finishing a capture** (`tools/emu/test_capture_finish.py`, 2026-11-18):
+the capture's state numbers, read from the singletons' vptrs, are
+`1 Normal, 2 Win, 3 Lose, 4 Runaway, 5 Reward, 6 Intrusion, 7 exit,
+9 Result, 10 AddBrowser, 11 CheckRelease, 12 DataChange`. Forcing **Win (2)**
+in a menu-launched capture leads the game to **Result (9)**: "Capture Rank S",
+styler level/EXP, waiting for "Touch to skip". Touch can't be injected, so the
+test then steps **AddBrowser (10)** ("Your Browser has registered a new
+Pokémon!"), **CheckRelease (11)** and **exit (7)**. The game returns to the
+title scene `0x2C` and redraws normally, with no hang or crash.
+
+**Browser registration is skipped for menu battles.** The AddBrowser state
+writes to the in-memory save (on the title screen no save is loaded, and the
+Browser page showed `R-000` with an unrelated sprite). The patch therefore
+hooks the `CCaptureScene` state switch: the load of the requested state
+(ov3 `0x020D05D8`, `ldr r5,[r2,#0x14]`) becomes a `bl` to a cave after ov3's
+BSS (`0x02126AC0`). That cave turns a request for AddBrowser (10) or
+CheckRelease (11) into exit (7) when the return scene (`CaptureSetup+0x144`)
+is the title `0x2C`, which only Capture Select sets (field captures use
+`0x1B`). Menu battles still show the capture-rank result screen, then return
+to the title. Verified (`test_capture_finish.py` on the patched ROM): Win →
+Result → request AddBrowser (10) → immediately scene `0x2C`, with no
+Browser screen and a normal title afterwards.
+
+**Not yet verified:** finishing a capture with real (touch) input (result/browser
 states may touch save data); real hardware/flashcarts.
 
 ## 8. Consequence for Capture Select

@@ -1,4 +1,227 @@
 definition_key,source,ranger_id,dex,name,map,candidate_map,chapter_start_map,label,trigger,x,z,params,note
+id500,coop,500,1,Bulbasaur,,,,CO-OP,MPCP #3,,,,multiplayer capture data
+id501,coop,501,2,Ivysaur,,,,CO-OP,MPCP #4,,,,multiplayer capture data
+id502,coop,502,3,Venusaur,,,,CO-OP,MPCP #5,,,,multiplayer capture data
+id503,coop,503,4,Charmander,,,,CO-OP,MPCP #61,,,,multiplayer capture data
+id504,coop,504,5,Charmeleon,,,,CO-OP,MPCP #62,,,,multiplayer capture data
+id505,coop,505,9,Blastoise,,,,CO-OP,MPCP #213,,,,multiplayer capture data
+id506,coop,506,16,Pidgey,,,,CO-OP,MPCP #6,,,,multiplayer capture data
+id507,coop,507,17,Pidgeotto,,,,CO-OP,MPCP #7,,,,multiplayer capture data
+id508,coop,508,18,Pidgeot,,,,CO-OP,MPCP #8,,,,multiplayer capture data
+id509,coop,509,25,Pikachu,,,,CO-OP,MPCP #153,,,,multiplayer capture data
+id510,coop,510,26,Raichu,,,,CO-OP,MPCP #154,,,,multiplayer capture data
+id511,coop,511,27,Sandshrew,,,,CO-OP,MPCP #9,,,,multiplayer capture data
+id512,coop,512,28,Sandslash,,,,CO-OP,MPCP #10,,,,multiplayer capture data
+id514,coop,514,37,Vulpix,,,,CO-OP,MPCP #107,,,,multiplayer capture data
+id515,coop,515,38,Ninetales,,,,CO-OP,MPCP #108,,,,multiplayer capture data
+id516,coop,516,41,Zubat,,,,CO-OP,MPCP #63,,,,multiplayer capture data
+id517,coop,517,42,Golbat,,,,CO-OP,MPCP #64,,,,multiplayer capture data
+id518,coop,518,43,Oddish,,,,CO-OP,MPCP #11,,,,multiplayer capture data
+id519,coop,519,44,Gloom,,,,CO-OP,MPCP #12,,,,multiplayer capture data
+id520,coop,520,45,Vileplume,,,,CO-OP,MPCP #13,,,,multiplayer capture data
+id522,coop,522,56,Mankey,,,,CO-OP,MPCP #109,,,,multiplayer capture data
+id523,coop,523,57,Primeape,,,,CO-OP,MPCP #110,,,,multiplayer capture data
+id524,coop,524,74,Geodude,,,,CO-OP,MPCP #66,,,,multiplayer capture data
+id525,coop,525,75,Graveler,,,,CO-OP,MPCP #67,,,,multiplayer capture data
+id526,coop,526,76,Golem,,,,CO-OP,MPCP #68,,,,multiplayer capture data
+id527,coop,527,85,Dodrio,,,,CO-OP,MPCP #111,,,,multiplayer capture data
+id528,coop,528,92,Gastly,,,,CO-OP,MPCP #182,,,,multiplayer capture data
+id529,coop,529,93,Haunter,,,,CO-OP,MPCP #183,,,,multiplayer capture data
+id530,coop,530,94,Gengar,,,,CO-OP,MPCP #184,,,,multiplayer capture data
+id531,coop,531,100,Voltorb,,,,CO-OP,MPCP #155,,,,multiplayer capture data
+id532,coop,532,101,Electrode,,,,CO-OP,MPCP #156,,,,multiplayer capture data
+id533,coop,533,106,Hitmonlee,,,,CO-OP,MPCP #70,,,,multiplayer capture data
+id534,coop,534,107,Hitmonchan,,,,CO-OP,MPCP #71,,,,multiplayer capture data
+id535,coop,535,109,Koffing,,,,CO-OP,MPCP #112,,,,multiplayer capture data
+id536,coop,536,110,Weezing,,,,CO-OP,MPCP #113,,,,multiplayer capture data
+id538,coop,538,126,Magmar,,,,CO-OP,MPCP #74,,,,multiplayer capture data
+id539,coop,539,133,Eevee,,,,CO-OP,MPCP #53,,,,multiplayer capture data
+id540,coop,540,134,Vaporeon,,,,CO-OP,MPCP #54,,,,multiplayer capture data
+id541,coop,541,135,Jolteon,,,,CO-OP,MPCP #55,,,,multiplayer capture data
+id542,coop,542,136,Flareon,,,,CO-OP,MPCP #56,,,,multiplayer capture data
+id543,coop,543,140,Kabuto,,,,CO-OP,MPCP #114,,,,multiplayer capture data
+id544,coop,544,141,Kabutops,,,,CO-OP,MPCP #115,,,,multiplayer capture data
+id548,coop,548,152,Chikorita,,,,CO-OP,MPCP #15,,,,multiplayer capture data
+id549,coop,549,153,Bayleef,,,,CO-OP,MPCP #16,,,,multiplayer capture data
+id550,coop,550,154,Meganium,,,,CO-OP,MPCP #17,,,,multiplayer capture data
+id551,coop,551,155,Cyndaquil,,,,CO-OP,MPCP #76,,,,multiplayer capture data
+id552,coop,552,156,Quilava,,,,CO-OP,MPCP #77,,,,multiplayer capture data
+id553,coop,553,157,Typhlosion,,,,CO-OP,MPCP #78,,,,multiplayer capture data
+id554,coop,554,158,Totodile,,,,CO-OP,MPCP #18,,,,multiplayer capture data
+id555,coop,555,159,Croconaw,,,,CO-OP,MPCP #19,,,,multiplayer capture data
+id556,coop,556,160,Feraligatr,,,,CO-OP,MPCP #20,,,,multiplayer capture data
+id558,coop,558,163,Hoothoot,,,,CO-OP,MPCP #21,,,,multiplayer capture data
+id559,coop,559,164,Noctowl,,,,CO-OP,MPCP #22,,,,multiplayer capture data
+id560,coop,560,169,Crobat,,,,CO-OP,MPCP #65,,,,multiplayer capture data
+id561,coop,561,175,Togepi,,,,CO-OP,MPCP #116,,,,multiplayer capture data
+id562,coop,562,176,Togetic,,,,CO-OP,MPCP #117,,,,multiplayer capture data
+id563,coop,563,177,Natu,,,,CO-OP,MPCP #157,,,,multiplayer capture data
+id564,coop,564,178,Xatu,,,,CO-OP,MPCP #158,,,,multiplayer capture data
+id565,coop,565,179,Mareep,,,,CO-OP,MPCP #119,,,,multiplayer capture data
+id566,coop,566,180,Flaaffy,,,,CO-OP,MPCP #120,,,,multiplayer capture data
+id567,coop,567,181,Ampharos,,,,CO-OP,MPCP #121,,,,multiplayer capture data
+id568,coop,568,182,Bellossom,,,,CO-OP,MPCP #14,,,,multiplayer capture data
+id569,coop,569,183,Marill,,,,CO-OP,MPCP #122,,,,multiplayer capture data
+id570,coop,570,184,Azumarill,,,,CO-OP,MPCP #123,,,,multiplayer capture data
+id571,coop,571,185,Sudowoodo,,,,CO-OP,MPCP #24,,,,multiplayer capture data
+id572,coop,572,186,Politoed,,,,CO-OP,MPCP #124,,,,multiplayer capture data
+id573,coop,573,190,Aipom,,,,CO-OP,MPCP #25,,,,multiplayer capture data
+id574,coop,574,191,Sunkern,,,,CO-OP,MPCP #27,,,,multiplayer capture data
+id575,coop,575,192,Sunflora,,,,CO-OP,MPCP #28,,,,multiplayer capture data
+id576,coop,576,194,Wooper,,,,CO-OP,MPCP #125,,,,multiplayer capture data
+id577,coop,577,195,Quagsire,,,,CO-OP,MPCP #126,,,,multiplayer capture data
+id578,coop,578,196,Espeon,,,,CO-OP,MPCP #57,,,,multiplayer capture data
+id579,coop,579,197,Umbreon,,,,CO-OP,MPCP #58,,,,multiplayer capture data
+id580,coop,580,198,Murkrow,,,,CO-OP,MPCP #185,,,,multiplayer capture data
+id581,coop,581,199,Slowking,,,,CO-OP,MPCP #187,,,,multiplayer capture data
+id582,coop,582,200,Misdreavus,,,,CO-OP,MPCP #214,,,,multiplayer capture data
+id583,coop,583,202,Wobbuffet,,,,CO-OP,MPCP #188,,,,multiplayer capture data
+id584,coop,584,203,Girafarig,,,,CO-OP,MPCP #127,,,,multiplayer capture data
+id585,coop,585,204,Pineco,,,,CO-OP,MPCP #29,,,,multiplayer capture data
+id586,coop,586,205,Forretress,,,,CO-OP,MPCP #30,,,,multiplayer capture data
+id588,coop,588,206,Dunsparce,,,,CO-OP,MPCP #128,,,,multiplayer capture data
+id589,coop,589,207,Gligar,,,,CO-OP,MPCP #211,,,,multiplayer capture data
+id590,coop,590,209,Snubbull,,,,CO-OP,MPCP #159,,,,multiplayer capture data
+id591,coop,591,210,Granbull,,,,CO-OP,MPCP #160,,,,multiplayer capture data
+id593,coop,593,213,Shuckle,,,,CO-OP,MPCP #79,,,,multiplayer capture data
+id594,coop,594,214,Heracross,,,,CO-OP,MPCP #189,,,,multiplayer capture data
+id595,coop,595,215,Sneasel,,,,CO-OP,MPCP #129,,,,multiplayer capture data
+id596,coop,596,216,Teddiursa,,,,CO-OP,MPCP #80,,,,multiplayer capture data
+id597,coop,597,217,Ursaring,,,,CO-OP,MPCP #81,,,,multiplayer capture data
+id598,coop,598,220,Swinub,,,,CO-OP,MPCP #131,,,,multiplayer capture data
+id599,coop,599,221,Piloswine,,,,CO-OP,MPCP #132,,,,multiplayer capture data
+id600,coop,600,225,Delibird,,,,CO-OP,MPCP #31,,,,multiplayer capture data
+id601,coop,601,227,Skarmory,,,,CO-OP,MPCP #161,,,,multiplayer capture data
+id602,coop,602,228,Houndour,,,,CO-OP,MPCP #82,,,,multiplayer capture data
+id603,coop,603,229,Houndoom,,,,CO-OP,MPCP #83,,,,multiplayer capture data
+id604,coop,604,231,Phanpy,,,,CO-OP,MPCP #84,,,,multiplayer capture data
+id605,coop,605,232,Donphan,,,,CO-OP,MPCP #85,,,,multiplayer capture data
+id606,coop,606,236,Tyrogue,,,,CO-OP,MPCP #69,,,,multiplayer capture data
+id607,coop,607,237,Hitmontop,,,,CO-OP,MPCP #72,,,,multiplayer capture data
+id608,coop,608,238,Smoochum,,,,CO-OP,MPCP #133,,,,multiplayer capture data
+id609,coop,609,240,Magby,,,,CO-OP,MPCP #73,,,,multiplayer capture data
+id610,coop,610,242,Blissey,,,,CO-OP,MPCP #216,,,,multiplayer capture data
+id614,coop,614,246,Larvitar,,,,CO-OP,MPCP #86,,,,multiplayer capture data
+id615,coop,615,247,Pupitar,,,,CO-OP,MPCP #87,,,,multiplayer capture data
+id616,coop,616,248,Tyranitar,,,,CO-OP,MPCP #88,,,,multiplayer capture data
+id621,coop,621,252,Treecko,,,,CO-OP,MPCP #32,,,,multiplayer capture data
+id622,coop,622,253,Grovyle,,,,CO-OP,MPCP #33,,,,multiplayer capture data
+id623,coop,623,254,Sceptile,,,,CO-OP,MPCP #34,,,,multiplayer capture data
+id625,coop,625,255,Torchic,,,,CO-OP,MPCP #35,,,,multiplayer capture data
+id626,coop,626,256,Combusken,,,,CO-OP,MPCP #36,,,,multiplayer capture data
+id627,coop,627,257,Blaziken,,,,CO-OP,MPCP #37,,,,multiplayer capture data
+id629,coop,629,258,Mudkip,,,,CO-OP,MPCP #134,,,,multiplayer capture data
+id630,coop,630,259,Marshtomp,,,,CO-OP,MPCP #135,,,,multiplayer capture data
+id631,coop,631,260,Swampert,,,,CO-OP,MPCP #136,,,,multiplayer capture data
+id632,coop,632,261,Poochyena,,,,CO-OP,MPCP #89,,,,multiplayer capture data
+id633,coop,633,262,Mightyena,,,,CO-OP,MPCP #90,,,,multiplayer capture data
+id634,coop,634,278,Wingull,,,,CO-OP,MPCP #137,,,,multiplayer capture data
+id635,coop,635,279,Pelipper,,,,CO-OP,MPCP #138,,,,multiplayer capture data
+id636,coop,636,280,Ralts,,,,CO-OP,MPCP #191,,,,multiplayer capture data
+id637,coop,637,281,Kirlia,,,,CO-OP,MPCP #192,,,,multiplayer capture data
+id638,coop,638,282,Gardevoir,,,,CO-OP,MPCP #193,,,,multiplayer capture data
+id639,coop,639,296,Makuhita,,,,CO-OP,MPCP #91,,,,multiplayer capture data
+id640,coop,640,297,Hariyama,,,,CO-OP,MPCP #92,,,,multiplayer capture data
+id641,coop,641,302,Sableye,,,,CO-OP,MPCP #217,,,,multiplayer capture data
+id642,coop,642,304,Aron,,,,CO-OP,MPCP #93,,,,multiplayer capture data
+id643,coop,643,305,Lairon,,,,CO-OP,MPCP #94,,,,multiplayer capture data
+id644,coop,644,306,Aggron,,,,CO-OP,MPCP #95,,,,multiplayer capture data
+id645,coop,645,309,Electrike,,,,CO-OP,MPCP #162,,,,multiplayer capture data
+id646,coop,646,310,Manectric,,,,CO-OP,MPCP #163,,,,multiplayer capture data
+id647,coop,647,322,Numel,,,,CO-OP,MPCP #96,,,,multiplayer capture data
+id648,coop,648,323,Camerupt,,,,CO-OP,MPCP #97,,,,multiplayer capture data
+id649,coop,649,343,Baltoy,,,,CO-OP,MPCP #164,,,,multiplayer capture data
+id650,coop,650,344,Claydol,,,,CO-OP,MPCP #165,,,,multiplayer capture data
+id651,coop,651,347,Anorith,,,,CO-OP,MPCP #139,,,,multiplayer capture data
+id652,coop,652,348,Armaldo,,,,CO-OP,MPCP #140,,,,multiplayer capture data
+id653,coop,653,355,Duskull,,,,CO-OP,MPCP #195,,,,multiplayer capture data
+id654,coop,654,356,Dusclops,,,,CO-OP,MPCP #196,,,,multiplayer capture data
+id655,coop,655,358,Chimecho,,,,CO-OP,MPCP #47,,,,multiplayer capture data
+id656,coop,656,359,Absol,,,,CO-OP,MPCP #198,,,,multiplayer capture data
+id657,coop,657,363,Spheal,,,,CO-OP,MPCP #141,,,,multiplayer capture data
+id658,coop,658,364,Sealeo,,,,CO-OP,MPCP #142,,,,multiplayer capture data
+id659,coop,659,365,Walrein,,,,CO-OP,MPCP #143,,,,multiplayer capture data
+id660,coop,660,371,Bagon,,,,CO-OP,MPCP #199,,,,multiplayer capture data
+id661,coop,661,372,Shelgon,,,,CO-OP,MPCP #200,,,,multiplayer capture data
+id662,coop,662,373,Salamence,,,,CO-OP,MPCP #201,,,,multiplayer capture data
+id664,coop,664,374,Beldum,,,,CO-OP,MPCP #166,,,,multiplayer capture data
+id665,coop,665,375,Metang,,,,CO-OP,MPCP #167,,,,multiplayer capture data
+id666,coop,666,376,Metagross,,,,CO-OP,MPCP #168,,,,multiplayer capture data
+id670,coop,670,387,Turtwig,,,,CO-OP,MPCP #38,,,,multiplayer capture data
+id671,coop,671,388,Grotle,,,,CO-OP,MPCP #39,,,,multiplayer capture data
+id673,coop,673,390,Chimchar,,,,CO-OP,MPCP #202,,,,multiplayer capture data
+id674,coop,674,391,Monferno,,,,CO-OP,MPCP #203,,,,multiplayer capture data
+id675,coop,675,392,Infernape,,,,CO-OP,MPCP #204,,,,multiplayer capture data
+id676,coop,676,393,Piplup,,,,CO-OP,MPCP #0,,,,multiplayer capture data
+id677,coop,677,394,Prinplup,,,,CO-OP,MPCP #1,,,,multiplayer capture data
+id678,coop,678,395,Empoleon,,,,CO-OP,MPCP #2,,,,multiplayer capture data
+id680,coop,680,396,Starly,,,,CO-OP,MPCP #169,,,,multiplayer capture data
+id681,coop,681,397,Staravia,,,,CO-OP,MPCP #170,,,,multiplayer capture data
+id682,coop,682,398,Staraptor,,,,CO-OP,MPCP #171,,,,multiplayer capture data
+id683,coop,683,401,Kricketot,,,,CO-OP,MPCP #40,,,,multiplayer capture data
+id684,coop,684,402,Kricketune,,,,CO-OP,MPCP #41,,,,multiplayer capture data
+id685,coop,685,403,Shinx,,,,CO-OP,MPCP #42,,,,multiplayer capture data
+id686,coop,686,404,Luxio,,,,CO-OP,MPCP #43,,,,multiplayer capture data
+id687,coop,687,405,Luxray,,,,CO-OP,MPCP #44,,,,multiplayer capture data
+id688,coop,688,408,Cranidos,,,,CO-OP,MPCP #172,,,,multiplayer capture data
+id689,coop,689,409,Rampardos,,,,CO-OP,MPCP #173,,,,multiplayer capture data
+id690,coop,690,410,Shieldon,,,,CO-OP,MPCP #98,,,,multiplayer capture data
+id691,coop,691,411,Bastiodon,,,,CO-OP,MPCP #99,,,,multiplayer capture data
+id692,coop,692,414,Mothim,,,,CO-OP,MPCP #45,,,,multiplayer capture data
+id693,coop,693,415,Combee,,,,CO-OP,MPCP #205,,,,multiplayer capture data
+id694,coop,694,416,Vespiquen,,,,CO-OP,MPCP #206,,,,multiplayer capture data
+id696,coop,696,417,Pachirisu,,,,CO-OP,MPCP #174,,,,multiplayer capture data
+id697,coop,697,418,Buizel,,,,CO-OP,MPCP #144,,,,multiplayer capture data
+id698,coop,698,419,Floatzel,,,,CO-OP,MPCP #145,,,,multiplayer capture data
+id699,coop,699,424,Ambipom,,,,CO-OP,MPCP #26,,,,multiplayer capture data
+id700,coop,700,425,Drifloon,,,,CO-OP,MPCP #218,,,,multiplayer capture data
+id701,coop,701,426,Drifblim,,,,CO-OP,MPCP #219,,,,multiplayer capture data
+id702,coop,702,429,Mismagius,,,,CO-OP,MPCP #215,,,,multiplayer capture data
+id703,coop,703,430,Honchkrow,,,,CO-OP,MPCP #186,,,,multiplayer capture data
+id704,coop,704,431,Glameow,,,,CO-OP,MPCP #146,,,,multiplayer capture data
+id705,coop,705,432,Purugly,,,,CO-OP,MPCP #147,,,,multiplayer capture data
+id706,coop,706,433,Chingling,,,,CO-OP,MPCP #46,,,,multiplayer capture data
+id707,coop,707,434,Stunky,,,,CO-OP,MPCP #148,,,,multiplayer capture data
+id708,coop,708,435,Skuntank,,,,CO-OP,MPCP #149,,,,multiplayer capture data
+id709,coop,709,436,Bronzor,,,,CO-OP,MPCP #175,,,,multiplayer capture data
+id710,coop,710,437,Bronzong,,,,CO-OP,MPCP #176,,,,multiplayer capture data
+id711,coop,711,438,Bonsly,,,,CO-OP,MPCP #23,,,,multiplayer capture data
+id712,coop,712,439,Mime Jr.,,,,CO-OP,MPCP #100,,,,multiplayer capture data
+id713,coop,713,441,Chatot,,,,CO-OP,MPCP #48,,,,multiplayer capture data
+id714,coop,714,443,Gible,,,,CO-OP,MPCP #207,,,,multiplayer capture data
+id715,coop,715,444,Gabite,,,,CO-OP,MPCP #208,,,,multiplayer capture data
+id716,coop,716,445,Garchomp,,,,CO-OP,MPCP #209,,,,multiplayer capture data
+id717,coop,717,446,Munchlax,,,,CO-OP,MPCP #101,,,,multiplayer capture data
+id718,coop,718,447,Riolu,,,,CO-OP,MPCP #177,,,,multiplayer capture data
+id720,coop,720,448,Lucario,,,,CO-OP,MPCP #178,,,,multiplayer capture data
+id722,coop,722,449,Hippopotas,,,,CO-OP,MPCP #102,,,,multiplayer capture data
+id723,coop,723,450,Hippowdon,,,,CO-OP,MPCP #103,,,,multiplayer capture data
+id724,coop,724,451,Skorupi,,,,CO-OP,MPCP #49,,,,multiplayer capture data
+id725,coop,725,452,Drapion,,,,CO-OP,MPCP #50,,,,multiplayer capture data
+id727,coop,727,453,Croagunk,,,,CO-OP,MPCP #104,,,,multiplayer capture data
+id728,coop,728,454,Toxicroak,,,,CO-OP,MPCP #105,,,,multiplayer capture data
+id729,coop,729,455,Carnivine,,,,CO-OP,MPCP #51,,,,multiplayer capture data
+id730,coop,730,459,Snover,,,,CO-OP,MPCP #150,,,,multiplayer capture data
+id731,coop,731,460,Abomasnow,,,,CO-OP,MPCP #151,,,,multiplayer capture data
+id733,coop,733,461,Weavile,,,,CO-OP,MPCP #130,,,,multiplayer capture data
+id735,coop,735,462,Magnezone,,,,CO-OP,MPCP #179,,,,multiplayer capture data
+id737,coop,737,463,Lickilicky,,,,CO-OP,MPCP #210,,,,multiplayer capture data
+id739,coop,739,465,Tangrowth,,,,CO-OP,MPCP #52,,,,multiplayer capture data
+id741,coop,741,466,Electivire,,,,CO-OP,MPCP #180,,,,multiplayer capture data
+id743,coop,743,467,Magmortar,,,,CO-OP,MPCP #75,,,,multiplayer capture data
+id745,coop,745,468,Togekiss,,,,CO-OP,MPCP #118,,,,multiplayer capture data
+id747,coop,747,470,Leafeon,,,,CO-OP,MPCP #59,,,,multiplayer capture data
+id748,coop,748,471,Glaceon,,,,CO-OP,MPCP #60,,,,multiplayer capture data
+id749,coop,749,472,Gliscor,,,,CO-OP,MPCP #212,,,,multiplayer capture data
+id752,coop,752,474,Porygon-Z,,,,CO-OP,MPCP #181,,,,multiplayer capture data
+id753,coop,753,475,Gallade,,,,CO-OP,MPCP #194,,,,multiplayer capture data
+id754,coop,754,476,Probopass,,,,CO-OP,MPCP #106,,,,multiplayer capture data
+id756,coop,756,477,Dusknoir,,,,CO-OP,MPCP #197,,,,multiplayer capture data
+id758,coop,758,478,Froslass,,,,CO-OP,MPCP #152,,,,multiplayer capture data
+id760,coop,760,493,Arceus,,,,CO-OP,MPCP #220,,,,multiplayer capture data
+id762,coop,762,234,Stantler,,,,CO-OP,MPCP #190,,,,multiplayer capture data
+id768,coop,768,151,Mew,,,,CO-OP,MPCP #221,,,,multiplayer capture data
+id769,coop,769,386,Deoxys,,,,CO-OP,MPCP #222,,,,multiplayer capture data
 id101,field_script,101,166,Ledian,,,m009_03,C025_EV001_1,script@0xBF0E8+0x3BD4,,,CAP_BGM=1 CAP_154=13 CAP_FLAG2= CAP_START=,
 id107,field_script,107,172,Pichu,,m000_00,m002_00,C003_EV001_0,script@0x9B794+0x1B20,273,366,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
 id107,field_script,107,172,Pichu,,m000_00,m002_00,C003_EV001_1,script@0x9B794+0x1DE8,273,366,CAP_FLAG2= CAP_START=,linked_wild=1 (unique_id)
@@ -318,6 +541,47 @@ id425,sky_1C10,425,381,Latios,,,,,script@0x101954+0x8EC,,,"0x1C54(3, 0x1A9, 0) 1
 id425,sky_1C10,425,381,Latios,,,,,script@0x101F38+0x754,,,"0x1C54(3, 0x1A9, 0) 1C35(0xA, 6) 1C36(?)",sky capture via 1C10 -> CSkyCaptureBeforeState
 id9,sky_1C10,9,6,Charizard,,,,,script@0xF9094+0x1DE0,,,"0x1C54(0xF, 9, 0) 1C35(4, 2) 1C36(?)",sky capture via 1C10 -> CSkyCaptureBeforeState
 id99,sky_1C10,99,164,Noctowl,,,,,script@0xF9094+0xAE8,,,"0x1C12(0x63, 0, 3, 0x94, 0x80) 1C35(0xD, 1) 1C36(?)",sky capture via 1C10 -> CSkyCaptureBeforeState
+id11,sky_enemy,11,16,Pidgey,,,,SKY,SPKD #0,,,,free-flight sky enemy (1C76)
+id11,sky_enemy,11,16,Pidgey,,,,SKY,SPKD #1,,,,free-flight sky enemy (1C76)
+id11,sky_enemy,11,16,Pidgey,,,,SKY,SPKD #2,,,,free-flight sky enemy (1C76)
+id11,sky_enemy,11,16,Pidgey,,,,SKY,SPKD #3,,,,free-flight sky enemy (1C76)
+id11,sky_enemy,11,16,Pidgey,,,,SKY,SPKD #4,,,,free-flight sky enemy (1C76)
+id11,sky_enemy,11,16,Pidgey,,,,SKY,SPKD #5,,,,free-flight sky enemy (1C76)
+id14,sky_enemy,14,17,Pidgeotto,,,,SKY,SPKD #6,,,,free-flight sky enemy (1C76)
+id14,sky_enemy,14,17,Pidgeotto,,,,SKY,SPKD #7,,,,free-flight sky enemy (1C76)
+id14,sky_enemy,14,17,Pidgeotto,,,,SKY,SPKD #8,,,,free-flight sky enemy (1C76)
+id14,sky_enemy,14,17,Pidgeotto,,,,SKY,SPKD #9,,,,free-flight sky enemy (1C76)
+id16,sky_enemy,16,18,Pidgeot,,,,SKY,SPKD #10,,,,free-flight sky enemy (1C76)
+id164,sky_enemy,164,227,Skarmory,,,,SKY,SPKD #11,,,,free-flight sky enemy (1C76)
+id251,sky_enemy,251,380,Latias,,,,SKY,SPKD #28,,,,free-flight sky enemy (1C76)
+id253,sky_enemy,253,381,Latios,,,,SKY,SPKD #29,,,,free-flight sky enemy (1C76)
+id266,sky_enemy,266,396,Starly,,,,SKY,SPKD #12,,,,free-flight sky enemy (1C76)
+id266,sky_enemy,266,396,Starly,,,,SKY,SPKD #13,,,,free-flight sky enemy (1C76)
+id266,sky_enemy,266,396,Starly,,,,SKY,SPKD #14,,,,free-flight sky enemy (1C76)
+id266,sky_enemy,266,396,Starly,,,,SKY,SPKD #15,,,,free-flight sky enemy (1C76)
+id266,sky_enemy,266,396,Starly,,,,SKY,SPKD #16,,,,free-flight sky enemy (1C76)
+id266,sky_enemy,266,396,Starly,,,,SKY,SPKD #17,,,,free-flight sky enemy (1C76)
+id269,sky_enemy,269,397,Staravia,,,,SKY,SPKD #18,,,,free-flight sky enemy (1C76)
+id269,sky_enemy,269,397,Staravia,,,,SKY,SPKD #19,,,,free-flight sky enemy (1C76)
+id269,sky_enemy,269,397,Staravia,,,,SKY,SPKD #20,,,,free-flight sky enemy (1C76)
+id300,sky_enemy,300,425,Drifloon,,,,SKY,SPKD #21,,,,free-flight sky enemy (1C76)
+id300,sky_enemy,300,425,Drifloon,,,,SKY,SPKD #22,,,,free-flight sky enemy (1C76)
+id300,sky_enemy,300,425,Drifloon,,,,SKY,SPKD #23,,,,free-flight sky enemy (1C76)
+id302,sky_enemy,302,426,Drifblim,,,,SKY,SPKD #24,,,,free-flight sky enemy (1C76)
+id307,sky_enemy,307,430,Honchkrow,,,,SKY,SPKD #26,,,,free-flight sky enemy (1C76)
+id322,sky_enemy,322,441,Chatot,,,,SKY,SPKD #25,,,,free-flight sky enemy (1C76)
+id355,sky_enemy,355,468,Togekiss,,,,SKY,SPKD #27,,,,free-flight sky enemy (1C76)
+id75,sky_enemy,75,144,Articuno,,,,SKY,SPKD #30,,,,free-flight sky enemy (1C76)
+id78,sky_enemy,78,145,Zapdos,,,,SKY,SPKD #31,,,,free-flight sky enemy (1C76)
+id81,sky_enemy,81,146,Moltres,,,,SKY,SPKD #32,,,,free-flight sky enemy (1C76)
+unresolved,tutorial,,,Capture tutorial 1,,,,TUTORIAL1,capture script 1506,,,CAP_150=1,count 0; the capture script adds its targets (3C03/3C05)
+id386,tutorial,386,25,Pikachu,,,,TUTORIAL2,capture script 1507,,,CAP_150=2,count 0; the capture script adds its targets (3C03/3C05)
+id386,tutorial,386,25,Pikachu,,,,TUTORIAL2,capture script 1507,,,CAP_150=2,count 0; the capture script adds its targets (3C03/3C05)
+id386,tutorial,386,25,Pikachu,,,,TUTORIAL7,capture script 1512,,,CAP_150=7,count 0; the capture script adds its targets (3C03/3C05)
+id388,tutorial,388,25,Pikachu,,,,TUTORIAL4,capture script 1509,,,CAP_150=4,count 0; the capture script adds its targets (3C03/3C05)
+id390,tutorial,390,207,Gligar,,,,TUTORIAL5,capture script 1510,,,CAP_150=5,count 0; the capture script adds its targets (3C03/3C05)
+id391,tutorial,391,155,Cyndaquil,,,,TUTORIAL3,capture script 1508,,,CAP_150=3,count 0; the capture script adds its targets (3C03/3C05)
+id391,tutorial,391,155,Cyndaquil,,,,TUTORIAL6,capture script 1511,,,CAP_150=6,count 0; the capture script adds its targets (3C03/3C05)
 id201,wild_placement,201,259,Marshtomp,,,,,placement entry 7814#0,335,323,"f2=0 f3=1 f8..f15=65535,65535,65535,65535,65535,0,100,0",multiplayer placement set (map from runtime quest data)
 id31,wild_placement,31,45,Vileplume,,,,,placement entry 7814#1,462,333,"f2=0 f3=1 f8..f15=65535,65535,65535,65535,65535,0,100,0",multiplayer placement set (map from runtime quest data)
 id500,wild_placement,500,1,Bulbasaur,,,,,placement entry 7765#1,301,275,"f2=0 f3=1 f8..f15=65535,65535,65535,65535,65535,0,0,0",multiplayer placement set (map from runtime quest data)
