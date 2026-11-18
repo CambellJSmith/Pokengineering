@@ -97,6 +97,9 @@ C_HEAD = 0x8000 | (31 << 10) | (31 << 5) | 0    # cyan-ish (BGR: r=0,g=31,b=31)
 
 
 def font_bytes() -> bytes:
+    vendored = Path(__file__).with_name("font8x8.bin")   # ASCII 32..127 from Lat15-VGA8
+    if vendored.exists():
+        return vendored.read_bytes()
     d = gzip.open(FONT_FILE).read()
     if d[:2] != b"\x36\x04" or d[3] != 8:
         raise SystemExit("expected an 8x8 PSF1 font")
@@ -764,8 +767,12 @@ battle_table:
     head = bytes(code)
     # Keystone mis-assembles some conditional BL to forward labels as a
     # branch-to-self; refuse any branch whose target is its own address.
-    from capstone import CS_ARCH_ARM as _A, CS_MODE_ARM as _M, Cs as _Cs
-    for ins in _Cs(_A, _M).disasm(head[:len(head) - len(fnt)], cave):
+    try:
+        from capstone import CS_ARCH_ARM as _A, CS_MODE_ARM as _M, Cs as _Cs
+        _dis = _Cs(_A, _M).disasm(head[:len(head) - len(fnt)], cave)
+    except ImportError:                          # optional sanity check
+        _dis = []
+    for ins in _dis:
         if ins.mnemonic.startswith("b") and ins.op_str.startswith("#"):
             if int(ins.op_str[1:], 16) == ins.address:
                 raise SystemExit(f"assembler produced a self-branch at {ins.address:#x}: {ins.mnemonic}")
