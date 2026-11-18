@@ -511,6 +511,37 @@ Pokémon's map), else fallback arena 13. All 582 battles now get a background
 (m002_00, arena 13) and a `SKY` Starly (fallback) both show a sand-and-grass
 field instead of black.
 
+**Arena catalog** (all 66 arena IDs used by MPPS or scripts, screenshotted
+with `tools/emu/batch_battles.py`; screenshots are local only):
+
+| look | arena IDs |
+|---|---|
+| grass / meadow | 0, 15, 16, 19, 77, 78 |
+| sand, sand + grass | 2, 13, 67, 74 |
+| dirt / earth | 4, 21, 23, 24, 25, 33, 44, 45, 49, 50, 79, 80 |
+| water (sea bed, ocean, lake, cave water) | 5, 9, 51, 39 |
+| stone, ruins, tiles | 6, 7, 8, 14, 17, 18, 20, 41, 42, 43, 52, 65, 69, 70, 71, 72, 75, 76, 82 |
+| indoor (wood, carpet, mats, metal grates) | 11, 12, 27, 32, 34, 35, 37, 38, 66, 68 |
+| snow / ice | 26, 28, 36, 46 |
+| dark cave | 31 |
+| volcanic | 10, 40 |
+| **sky (clouds)** | **48** |
+| grey fog | 47 |
+| ornate temple | 73, 81 |
+
+**Arena choice per battle (2026-11-18 review)**, first match wins
+(`arena_from` column in `capture_select_list.csv`):
+1. `script`: the event's own `CAP_ARENA` (3 battles);
+2. `map`: the battle's map default (321);
+3. `manual:sky`: SKY battles → 48 (15);
+4. `manual:legendary`: Heatran → 40, Giratina → 31, Palkia/Dialga/Arceus →
+   81, Mew → 17, Deoxys → 48, Shaymin → 77 (22);
+5. `manual:sky-species`: species seen only in sky captures (Pidgeotto,
+   Skarmory, Honchkrow, Chatot, Togekiss…) → 48 (9);
+6. `habitat`: the most common arena among the maps where the same species is
+   placed or scripted (393; co-op and EXTRA entries);
+7. `fallback` 13: only `Tutorial 1` (its area matches tutorial 2's).
+
 **Implementation** (`tools/capture_select/build_patch.py`):
 - ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020F76AC`
   (code + strings ≈1.2 KB, 8×8 font 768 B from `Lat15-VGA8`, 532 × 64-byte

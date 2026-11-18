@@ -68,7 +68,18 @@ FONT_FILE = Path("/usr/share/consolefonts/Lat15-VGA8.psf.gz")
 MAX_TARGETS = 8
 STATE = 0x020B797C + 0x128   # unused tail of player record 3 (multiplayer only), not touched by Clear
 ROWS = 20
-FALLBACK_ARENA = 13
+FALLBACK_ARENA = 13   # verified outdoor arena (sand + grass), used when nothing better is known
+# Manual arena choices (arena catalog: screenshots of all 66 arena IDs from
+# tools/emu/batch_battles.py; docs/scene_system.md section 10):
+SKY_ARENA = 48                                   # clouds / open sky
+MANUAL_ARENA_BY_DEX = {485: 40,                  # Heatran -> volcanic red earth
+                       487: 31,                  # Giratina -> dark cave
+                       484: 81, 483: 81,         # Palkia / Dialga -> ornate temple
+                       493: 81,                  # Arceus -> ornate temple
+                       151: 17,                  # Mew -> stone ruins
+                       386: 48,                  # Deoxys -> sky
+                       492: 77}                  # Shaymin -> flower meadow
+TUTORIAL_CHAPTER = {2: 3, 3: 5, 4: 6, 5: 11, 7: 19}   # tutorial n is first started in chapter C0xx
 # ov3 hook: skip Browser registration / release check for menu battles
 OV3 = 3
 OV3_FILE = ROOT / "work/code_analysis/executables/overlays/overlay_003.bin"
@@ -108,6 +119,21 @@ def map_arenas():
     return out
 
 
+def chapter_maps():
+    """chapter number -> start map (2483.CHPT +0 = MPPS index, +8 = chapter)."""
+    c, m = ROOT / "work/game_acf/archive/2483.CHPT", ROOT / "work/game_acf/archive/2482.MPPS"
+    out = {}
+    if c.exists() and m.exists():
+        cd, md = c.read_bytes(), m.read_bytes()
+        rs, n = struct.unpack_from("<II", cd, 4)
+        mrs = struct.unpack_from("<I", md, 4)[0]
+        for i in range(n):
+            idx, _a, _b, _x, _z, chap = struct.unpack_from("<HBBhhB", cd, 0x10 + rs * i)
+            r = md[0x10 + mrs * idx:0x10 + mrs * (idx + 1)]
+            out.setdefault(chap, f"m{r[1]:03d}_{r[2]:02d}")
+    return out
+
+
 def battles():
     """Menu entries as dicts: desc, label, ids, bgm, arena, flags, s150, v140, v154, v156.
     0xFF / 0xFFFF mean "leave the CaptureSetup_Clear default"."""
@@ -129,14 +155,36 @@ def battles():
         return o
 
     arenas = map_arenas()
+    chapters = chapter_maps()
+    # habitat: most common arena of the maps where each species is placed or
+    # scripted (same National Dex), used for battles without their own map
+    habitat = collections.defaultdict(collections.Counter)
+    for r in db:
+        if r["ranger_id"] and r["source"] in ("wild_placement", "field_script"):
+            mp = r["map"] or r.get("chapter_start_map", "")
+            if arenas.get(mp, 0xFF) != 0xFF:
+                habitat[ranger_ids.dex_of(int(r["ranger_id"]))][arenas[mp]] += 1
 
-    def entry(ids, label, o, desc=None, map_name=""):
+    sky_dex = {ranger_ids.dex_of(int(r["ranger_id"])) for r in db
+               if r["ranger_id"] and r["source"] in ("sky_1C10", "sky_enemy")}
+
+    def entry(ids, label, o, desc=None, map_name="", kind=""):
         o = dict(o)
-        if o["arena"] == 0xFF and arenas.get(map_name, 0xFF) != 0xFF:
-            o["arena"] = arenas[map_name]
-        if o["arena"] == 0xFF:
-            o["arena"] = FALLBACK_ARENA
-        return dict(desc=desc or describe(ids), label=label, ids=ids, map=map_name, **o)
+        how = "script" if o["arena"] != 0xFF else ""
+        if not how and arenas.get(map_name, 0xFF) != 0xFF:
+            o["arena"], how = arenas[map_name], "map"
+        dex = [ranger_ids.dex_of(i) for i in ids]
+        if not how and kind == "sky":
+            o["arena"], how = SKY_ARENA, "manual:sky"
+        if not how and dex and dex[0] in MANUAL_ARENA_BY_DEX:
+            o["arena"], how = MANUAL_ARENA_BY_DEX[dex[0]], "manual:legendary"
+        if not how and dex and dex[0] in sky_dex and not habitat.get(dex[0]):
+            o["arena"], how = SKY_ARENA, "manual:sky-species"
+        if not how and dex and habitat.get(dex[0]):
+            o["arena"], how = habitat[dex[0]].most_common(1)[0][0], "habitat"
+        if not how:
+            o["arena"], how = FALLBACK_ARENA, "fallback"
+        return dict(desc=desc or describe(ids), label=label, ids=ids, map=map_name, arena_from=how, **o)
 
     out, seen_ids, seen_keys = [], set(), set()
     groups = collections.OrderedDict()
@@ -164,7 +212,10 @@ def battles():
     for label, (r, ids) in sorted(tut.items()):
         # count stays 0: the tutorial's capture script adds its own targets
         desc = "Tutorial %s: %s" % (label[-1], describe(ids)) if ids else "Tutorial %s" % label[-1]
-        out.append(entry([], "", opts(r["params"]), desc=desc))
+        chap = TUTORIAL_CHAPTER.get(int(label[-1]))
+        e = entry(ids, "", opts(r["params"]), desc=desc, map_name=chapters.get(chap, ""))
+        e["ids"] = []        # count stays 0: the tutorial's capture script adds its own targets
+        out.append(e)
     for src, label in (("sky_1C10", "SKY"), ("sky_enemy", "SKY"), ("coop", "CO-OP")):
         for r in db:
             if r["source"] == src and r["ranger_id"]:
@@ -172,7 +223,7 @@ def battles():
                 if rid in seen_ids or (ranger_ids.dex_of(rid) or 999) >= 900:
                     continue
                 seen_ids.add(rid)
-                out.append(entry([rid], label, opts("")))
+                out.append(entry([rid], label, opts(""), kind="sky" if label == "SKY" else ""))
     wild = {}
     for r in db:
         if r["source"] == "wild_placement" and r["ranger_id"]:
@@ -580,11 +631,11 @@ battle_table:
     (out / "capture_select_patch.json").write_text(json.dumps(patches, indent=1))
     with open(out / "capture_select_list.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["index", "menu_text", "ranger_ids", "names", "bgm", "arena", "flags", "capture_script", "v154", "v156", "v140", "map"])
+        w.writerow(["index", "menu_text", "ranger_ids", "names", "bgm", "arena", "flags", "capture_script", "v154", "v156", "v140", "map", "arena_from"])
         for i, e in enumerate(blist):
             w.writerow([i, entry_text(i, e["desc"], e["label"]), " ".join(map(str, e["ids"])),
                         " | ".join(ranger_ids.name_of(x) for x in e["ids"]), e["bgm"], e["arena"],
-                        e["flags"], e["s150"], e["v154"], e["v156"], e["v140"], e["map"]])
+                        e["flags"], e["s150"], e["v154"], e["v156"], e["v140"], e["map"], e["arena_from"]])
     end = cave + len(cave_bytes)
     print(f"cave {cave:#010x}-{end:#010x}: {len(head) - len(fnt)} bytes code+strings, font {len(fnt)}, {n} battles")
     assert end < 0x0212CFC0, "cave would overlap the heap"
