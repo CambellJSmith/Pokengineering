@@ -127,11 +127,44 @@ def extra_sources(nm):
                      "label": "CO-OP", "trigger": f"MPCP #{i}", "x": "", "z": "",
                      "params": "", "note": "multiplayer capture data"})
     for n in range(1, 8):
-        rows.append({"source": "tutorial", "ranger_id": "", "name": f"Capture tutorial {n}",
-                     "map": "", "label": f"TUTORIAL{n}", "trigger": f"capture script {0x5E1 + n}",
-                     "x": "", "z": "", "params": f"CAP_150={n}",
-                     "note": "count 0; the capture script spawns the targets"})
+        targets = tutorial_targets(0x5E1 + n)
+        base = {"source": "tutorial", "map": "", "label": f"TUTORIAL{n}",
+                "trigger": f"capture script {0x5E1 + n}", "x": "", "z": "", "params": f"CAP_150={n}",
+                "note": "count 0; the capture script adds its targets (3C03/3C05)"}
+        if not targets:
+            rows.append({**base, "ranger_id": "", "name": f"Capture tutorial {n}"})
+        for rid in targets:
+            rows.append({**base, "ranger_id": rid, "name": nm(rid)})
     return rows
+
+
+def tutorial_targets(entry):
+    """Ranger IDs a capture script adds with capture commands 3C03 (add) /
+    3C05 (add + spawn) (= group-8 aliases 2005/2007; handlers ov3
+    0x020FE094 / 0x020FE0E8, which call CaptureSetup_Add)."""
+    import struct
+    sys_path = str(ROOT / "tools")
+    import sys
+    if sys_path not in sys.path:
+        sys.path.insert(0, sys_path)
+    import analyze_capture_scripts as acs
+    from decode_script_vm import decode, direct_call_args
+    if not ACF.exists():
+        return []
+    d = ACF.read_bytes()
+    base, _n = struct.unpack_from("<II", d, 8)
+    off = struct.unpack_from("<I", d, 0x20 + 12 * entry)[0]
+    res = acs.lz10(d, base + off, len(d))
+    if not res:
+        return []
+    _s, _e, insns = decode(res[0])
+    out = []
+    for i, ins in enumerate(insns):
+        if ins["op"] == 1 and ins["raw16"] in (0x3C03, 0x3C05, 0x2005, 0x2007):
+            args = direct_call_args(insns, i, ins["sub"])
+            if args:
+                out.append(args[0])
+    return out
 
 
 def main():

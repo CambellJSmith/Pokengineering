@@ -352,14 +352,38 @@ no Pokémon sprite, so they're special non-Pokémon targets.
 | **Sky enemies (free flight)** | `9529.SPKD` (resource `0x2539` → `0x020BD494`), 16-byte records, `+4` = Ranger ID | sky command `1C76(actor, spkdIndex, …)` (ov3 `0x02103D64`) spawns an object with Ranger ID at `+0x9C6`. On capture it adds itself through ov3 `0x02111C24` → `0x02116774` | 33 records / 16 IDs (new: Latios, Drifloon, Honchkrow, Chatot) |
 | **Co-op captures** | `2488.MPCP` (resource `0x9B8` → `0x020BD4C0`), 48-byte records, `+0` = Ranger ID + stats | multiplayer (ov26/ov3) | 223 IDs (42 not seen anywhere else) |
 
+**Capture-script commands that add targets mid-capture:** `3C03` (add,
+handler ov3 `0x020FE094` → `CaptureSetup_Add`) and `3C05` (add + spawn,
+`0x020FE0E8`); group 8 aliases them as `2005`/`2007`, because the group-15 table
+`0x0211C610` is the group-8 table `0x0211C608` + 2 entries. A sweep of all
+1,683 scripts finds them **only in the tutorial scripts**:
+
+| tutorial | capture script | targets added |
+|---|---|---|
+| 1 | 1506 | none (explanation only) |
+| 2 | 1507 | Pikachu (386) ×2, spawned |
+| 3 | 1508 | Cyndaquil (391); verified in emulator: "The Poké Assist tutorial has begun." |
+| 4 | 1509 | Pikachu (388) |
+| 5 | 1510 | Gligar (390) |
+| 6 | 1511 | Cyndaquil (391) |
+| 7 | 1512 | Pikachu (386) |
+
+So there are no other hidden mid-battle reinforcements.
+
+**Intrusion (`CCaptureIntrusionState`) isn't a Pokémon source.** It iterates
+3 fixed slots of the `0x88`-stride capture-before records at preset screen
+positions: other players joining a co-op capture.
+
 `tools/build_capture_database.py` now includes these sources (`sky_enemy`,
-`coop`, `tutorial`): 3,131 rows, **580 Ranger IDs / 306 species**.
+`coop`, `tutorial` with its targets): 3,132 rows, **584 Ranger IDs / 306 species**.
 
 ## 6b. Still open
 
 0. Exact event maps inside chapter scripts (currently only the chapter start map).
-0a. "Intrusion" Pokémon that join mid-capture (`CCaptureIntrusionState`): not
-    yet traced to data.
+0a. Exact event maps inside chapter scripts need runtime state. Map
+    `EventRect` layers hold `{x, z, w, h, eventId}` (ids ~300+), which the field
+    registers in an event manager (ov2 `0x020D7B64` → `0x02105A28`); the
+    chapter script decides what each id does at run time.
 
 1. Map names for the **multiplayer placement set** (entries 7707–8130, 1,581
    placements). `CCommuContext` (ov2 `0x0210E89C`) sets the selector byte, so

@@ -11,6 +11,7 @@ def shot(name): subprocess.run(["import", "-display", DISP, "-window", "root", f
 def reg(r): return int(gdb.parse_and_eval("$"+r)) & 0xffffffff
 def r32(a): return int(gdb.parse_and_eval("*(unsigned int*)0x%x" % a)) & 0xffffffff
 def r16(a): return int(gdb.parse_and_eval("*(unsigned short*)0x%x" % a)) & 0xffff
+CAPTURE_SHOT_FRAMES = [int(x) for x in os.environ.get("CAPTURE_SHOTS", "300").split(",")]
 SETUP = 0x020B797C; HOOK = 0x020EEA20; STATE = SETUP + 0x128
 KEYS = {"A": 1, "B": 2, "SELECT": 4, "RIGHT": 0x10, "LEFT": 0x20, "UP": 0x40, "DOWN": 0x80}
 plan = {120: "SELECT", 160: "DOWN", 170: "DOWN", 180: "DOWN", 230: "A"}
@@ -49,6 +50,8 @@ while time.time() - t0 < 200:
         if f > 240: hook.delete(); hook = None
     elif st is not None and pc == 0x020D05C4:
         f += 1
-        if f == 300:
-            shot("capture"); print("capture screenshot taken", flush=True); break
+        if f in CAPTURE_SHOT_FRAMES:
+            shot("capture_%d" % f if f != CAPTURE_SHOT_FRAMES[0] else "capture"); print("capture screenshot %d" % f, flush=True)
+        if f >= CAPTURE_SHOT_FRAMES[-1]:
+            print("capture screenshot taken", flush=True); break
 print("done")

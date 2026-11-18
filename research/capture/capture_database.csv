@@ -574,13 +574,14 @@ id355,sky_enemy,355,468,Togekiss,,,,SKY,SPKD #27,,,,free-flight sky enemy (1C76)
 id75,sky_enemy,75,144,Articuno,,,,SKY,SPKD #30,,,,free-flight sky enemy (1C76)
 id78,sky_enemy,78,145,Zapdos,,,,SKY,SPKD #31,,,,free-flight sky enemy (1C76)
 id81,sky_enemy,81,146,Moltres,,,,SKY,SPKD #32,,,,free-flight sky enemy (1C76)
-unresolved,tutorial,,,Capture tutorial 1,,,,TUTORIAL1,capture script 1506,,,CAP_150=1,count 0; the capture script spawns the targets
-unresolved,tutorial,,,Capture tutorial 2,,,,TUTORIAL2,capture script 1507,,,CAP_150=2,count 0; the capture script spawns the targets
-unresolved,tutorial,,,Capture tutorial 3,,,,TUTORIAL3,capture script 1508,,,CAP_150=3,count 0; the capture script spawns the targets
-unresolved,tutorial,,,Capture tutorial 4,,,,TUTORIAL4,capture script 1509,,,CAP_150=4,count 0; the capture script spawns the targets
-unresolved,tutorial,,,Capture tutorial 5,,,,TUTORIAL5,capture script 1510,,,CAP_150=5,count 0; the capture script spawns the targets
-unresolved,tutorial,,,Capture tutorial 6,,,,TUTORIAL6,capture script 1511,,,CAP_150=6,count 0; the capture script spawns the targets
-unresolved,tutorial,,,Capture tutorial 7,,,,TUTORIAL7,capture script 1512,,,CAP_150=7,count 0; the capture script spawns the targets
+unresolved,tutorial,,,Capture tutorial 1,,,,TUTORIAL1,capture script 1506,,,CAP_150=1,count 0; the capture script adds its targets (3C03/3C05)
+id386,tutorial,386,25,Pikachu,,,,TUTORIAL2,capture script 1507,,,CAP_150=2,count 0; the capture script adds its targets (3C03/3C05)
+id386,tutorial,386,25,Pikachu,,,,TUTORIAL2,capture script 1507,,,CAP_150=2,count 0; the capture script adds its targets (3C03/3C05)
+id386,tutorial,386,25,Pikachu,,,,TUTORIAL7,capture script 1512,,,CAP_150=7,count 0; the capture script adds its targets (3C03/3C05)
+id388,tutorial,388,25,Pikachu,,,,TUTORIAL4,capture script 1509,,,CAP_150=4,count 0; the capture script adds its targets (3C03/3C05)
+id390,tutorial,390,207,Gligar,,,,TUTORIAL5,capture script 1510,,,CAP_150=5,count 0; the capture script adds its targets (3C03/3C05)
+id391,tutorial,391,155,Cyndaquil,,,,TUTORIAL3,capture script 1508,,,CAP_150=3,count 0; the capture script adds its targets (3C03/3C05)
+id391,tutorial,391,155,Cyndaquil,,,,TUTORIAL6,capture script 1511,,,CAP_150=6,count 0; the capture script adds its targets (3C03/3C05)
 id201,wild_placement,201,259,Marshtomp,,,,,placement entry 7814#0,335,323,"f2=0 f3=1 f8..f15=65535,65535,65535,65535,65535,0,100,0",multiplayer placement set (map from runtime quest data)
 id31,wild_placement,31,45,Vileplume,,,,,placement entry 7814#1,462,333,"f2=0 f3=1 f8..f15=65535,65535,65535,65535,65535,0,100,0",multiplayer placement set (map from runtime quest data)
 id500,wild_placement,500,1,Bulbasaur,,,,,placement entry 7765#1,301,275,"f2=0 f3=1 f8..f15=65535,65535,65535,65535,65535,0,0,0",multiplayer placement set (map from runtime quest data)

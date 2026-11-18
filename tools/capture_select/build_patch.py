@@ -122,9 +122,14 @@ def battles():
     out += scripted
     for e in scripted:
         seen_ids.update(e["ids"])
+    tut = collections.OrderedDict()
     for r in db:
         if r["source"] == "tutorial":
-            out.append(entry([], r["label"], opts(r["params"]), desc="Capture tutorial"))
+            tut.setdefault(r["label"], (r, []))[1].extend([int(r["ranger_id"])] if r["ranger_id"] else [])
+    for label, (r, ids) in sorted(tut.items()):
+        # count stays 0: the tutorial's capture script adds its own targets
+        desc = "Tutorial %s: %s" % (label[-1], describe(ids)) if ids else "Tutorial %s" % label[-1]
+        out.append(entry([], "", opts(r["params"]), desc=desc))
     for src, label in (("sky_1C10", "SKY"), ("sky_enemy", "SKY"), ("coop", "CO-OP")):
         for r in db:
             if r["source"] == src and r["ranger_id"]:
@@ -154,7 +159,7 @@ def describe(ids):
 
 
 def entry_text(i, desc, label):
-    s = f"{i + 1:03d} {desc} {label}"
+    s = f"{i + 1:03d} {desc} {label}".rstrip()
     s = re.sub(r"[^\x20-\x7e]", "?", s)
     return s[:31]
 
