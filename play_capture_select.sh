@@ -13,6 +13,10 @@ ROM=work/capture_select/capture_select.nds
 if [[ "${REBUILD:-0}" == 1 || ! -f "$BASE" ]]; then
     bash tools/build_debug_rom.sh
 fi
+# Generated inputs the patch builder reads (first run only)
+[[ -f work/code_analysis/executables/overlays/overlay_028.bin ]] || bash tools/analyze_game_code.sh
+[[ -d work/game_acf/archive ]] || bash tools/extract_game_data.sh
+[[ -d work/localization ]] || bash tools/extract_localization.sh
 python3 tools/capture_select/build_patch.py
 python3 tools/patch_code_rom.py "$BASE" --patches "$PATCH" --output "$ROM"
 
