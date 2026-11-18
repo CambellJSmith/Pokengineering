@@ -571,6 +571,23 @@ setup_display:
     strh r1, [r0]
     ldr  r0, =0x04001050
     strh r1, [r0]
+    ldr  r0, =0x020dd700           @ title/demo context pointer
+    ldr  r0, [r0]
+    cmp  r0, #0
+    beq  no_dual3d
+    ldr  r1, [r0, #0x1c8]
+    bic  r1, r1, #4                @ stop the dual-screen 3D screen flip (as ov28 0x020D8418)
+    str  r1, [r0, #0x1c8]
+    mov  r1, #0
+    str  r1, [r0, #0x65c]
+no_dual3d:
+    ldr  r0, =0x04000304
+    ldrh r1, [r0]
+    bic  r1, r1, #0x8000           @ POWCNT1: engine A on the bottom screen
+    strh r1, [r0]
+    ldr  r0, =0x04000064           @ DISPCAPCNT off: no display capture over the menu
+    mov  r1, #0
+    str  r1, [r0]
     ldr  r0, =0x04000000
     ldr  r1, =0x00010805
     str  r1, [r0]
