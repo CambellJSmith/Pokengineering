@@ -481,7 +481,7 @@ menu on the bottom screen. UP/DOWN move (hold to repeat), LEFT/RIGHT or L/R
 page by 20, **A** starts the highlighted battle and **B** closes the menu
 (the title reloads). After a battle the game returns to the title (`0x2C`).
 
-**Menu entries (578)**, generated from `research/capture/capture_database.csv`
+**Menu entries (582)**, generated from `research/capture/capture_database.csv`
 (full list: `work/capture_select/capture_select_list.csv`):
 - every distinct scripted field capture with **all** its targets (up to 8)
   and options (BGM, arena, flags `+0x142`, `+0x140`, `+0x154`, `+0x156`),
@@ -490,6 +490,19 @@ page by 20, **A** starts the highlighted battle and **B** closes the menu
 - every sky capture: scripted `1C10` and free-flight `SPKD` enemies (`SKY`);
 - every co-op capture Pokémon (`CO-OP`, from `MPCP`);
 - every remaining wild Ranger ID (`WILD m010_02` …).
+
+**Arena backgrounds (2026-11-18).** In the field, `CFieldToCaptureState::Enter`
+asks the field context (vfunc `+0x50`, ov2 `0x020D89DC`) for the arena when
+`CaptureSetup+0x13E` is `0xFFFF`. It uses the current map's MPPS record:
+byte `+0x6C + floorType` for floor types 0–14, `+0x7B` for 15–22, `+0x7C` for
+23–30, `+0x7A` for 31 (floor type from the `FloorAttribute` placement layer
+at the player). From the title there's no field, so the menu writes the
+arena itself: the script's `CAP_ARENA` if set, else the battle's map default
+`MPPS +0x6C` (the scripted event's map, else its chapter start map, or the wild
+Pokémon's map), else fallback arena 13. All 582 battles now get a background
+(319 from their map, the rest from the fallback). Verified: `001 Pichu`
+(m002_00, arena 13) and a `SKY` Starly (fallback) both show a sand-and-grass
+field instead of black.
 
 **Implementation** (`tools/capture_select/build_patch.py`):
 - ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020F76AC`

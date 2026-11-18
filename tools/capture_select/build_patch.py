@@ -66,6 +66,7 @@ FONT_FILE = Path("/usr/share/consolefonts/Lat15-VGA8.psf.gz")
 MAX_TARGETS = 8
 STATE = 0x020B797C + 0x128   # unused tail of player record 3 (multiplayer only), not touched by Clear
 ROWS = 20
+FALLBACK_ARENA = 13   # verified outdoor arena (sand + grass), used when a battle has no map
 
 C_BG = 0x8000 | (12 << 10) | (3 << 5) | 2       # navy
 C_HI = 0x8000 | (0 << 10) | (16 << 5) | 31      # orange
@@ -79,6 +80,25 @@ def font_bytes() -> bytes:
         raise SystemExit("expected an 8x8 PSF1 font")
     glyphs = d[4:4 + 256 * 8]
     return glyphs[32 * 8:128 * 8]        # ASCII 32..127
+
+
+def map_arenas():
+    """map name -> default capture arena (MPPS record +0x6C).
+
+    In the field, CFieldToCaptureState::Enter asks the field context
+    (vfunc +0x50, ov2 0x020D89DC) for the arena when CaptureSetup+0x13E is
+    0xFFFF: MPPS record of the current map, byte +0x6C + floor type (0..14),
+    or +0x7B / +0x7C / +0x7A for floor types 15-22 / 23-30 / 31. From the
+    title there is no field, so the menu uses the map's default (+0x6C)."""
+    p = ROOT / "work/game_acf/archive/2482.MPPS"
+    out = {}
+    if p.exists():
+        m = p.read_bytes()
+        rs, n = struct.unpack_from("<II", m, 4)
+        for i in range(n):
+            r = m[0x10 + rs * i:0x10 + rs * (i + 1)]
+            out.setdefault(f"m{r[1]:03d}_{r[2]:02d}", r[0x6C])
+    return out
 
 
 def battles():
@@ -101,8 +121,15 @@ def battles():
             elif k == "CAP_156" and v: o["v156"] = int(v)
         return o
 
-    def entry(ids, label, o, desc=None):
-        return dict(desc=desc or describe(ids), label=label, ids=ids, **o)
+    arenas = map_arenas()
+
+    def entry(ids, label, o, desc=None, map_name=""):
+        o = dict(o)
+        if o["arena"] == 0xFF and arenas.get(map_name, 0xFF) != 0xFF:
+            o["arena"] = arenas[map_name]
+        if o["arena"] == 0xFF:
+            o["arena"] = FALLBACK_ARENA
+        return dict(desc=desc or describe(ids), label=label, ids=ids, map=map_name, **o)
 
     out, seen_ids, seen_keys = [], set(), set()
     groups = collections.OrderedDict()
@@ -113,11 +140,12 @@ def battles():
     for trig, rows in groups.items():
         ids = [int(r["ranger_id"]) for r in rows][:MAX_TARGETS]
         o = opts(rows[0]["params"])
-        key = (tuple(ids), tuple(sorted(o.items())))
+        key = (tuple(ids), tuple(sorted(o.items())), rows[0]["map"] or rows[0].get("chapter_start_map", ""))
         if key in seen_keys:
             continue
         seen_keys.add(key)
-        scripted.append(entry(ids, rows[0]["label"] or rows[0]["map"], o))
+        scripted.append(entry(ids, rows[0]["label"] or rows[0]["map"], o,
+                              map_name=rows[0]["map"] or rows[0].get("chapter_start_map", "")))
     scripted.sort(key=lambda e: e["label"])
     out += scripted
     for e in scripted:
@@ -147,7 +175,7 @@ def battles():
             if rid not in wild or (not wild[rid] and r["map"]):
                 wild[rid] = r["map"]
     for rid in sorted(wild, key=lambda i: (ranger_ids.dex_of(i), i)):
-        out.append(entry([rid], "WILD " + (wild[rid] or "co-op"), opts("")))
+        out.append(entry([rid], "WILD " + (wild[rid] or "co-op"), opts(""), map_name=wild[rid]))
     return out
 
 
@@ -534,11 +562,11 @@ battle_table:
     (out / "capture_select_patch.json").write_text(json.dumps(patches, indent=1))
     with open(out / "capture_select_list.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["index", "menu_text", "ranger_ids", "names", "bgm", "arena", "flags", "capture_script", "v154", "v156", "v140"])
+        w.writerow(["index", "menu_text", "ranger_ids", "names", "bgm", "arena", "flags", "capture_script", "v154", "v156", "v140", "map"])
         for i, e in enumerate(blist):
             w.writerow([i, entry_text(i, e["desc"], e["label"]), " ".join(map(str, e["ids"])),
                         " | ".join(ranger_ids.name_of(x) for x in e["ids"]), e["bgm"], e["arena"],
-                        e["flags"], e["s150"], e["v154"], e["v156"], e["v140"]])
+                        e["flags"], e["s150"], e["v154"], e["v156"], e["v140"], e["map"]])
     end = cave + len(cave_bytes)
     print(f"cave {cave:#010x}-{end:#010x}: {len(head) - len(fnt)} bytes code+strings, font {len(fnt)}, {n} battles")
     assert end < 0x0212CFC0, "cave would overlap the heap"
