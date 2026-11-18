@@ -66,7 +66,12 @@ FONT_FILE = Path("/usr/share/consolefonts/Lat15-VGA8.psf.gz")
 MAX_TARGETS = 8
 STATE = 0x020B797C + 0x128   # unused tail of player record 3 (multiplayer only), not touched by Clear
 ROWS = 20
-FALLBACK_ARENA = 13   # verified outdoor arena (sand + grass), used when a battle has no map
+FALLBACK_ARENA = 13
+# ov3 hook: skip Browser registration / release check for menu battles
+OV3 = 3
+OV3_FILE = ROOT / "work/code_analysis/executables/overlays/overlay_003.bin"
+STATE_LOAD = 0x020D05D8          # "ldr r5, [r2, #0x14]" in the CCaptureScene state switch 0x020D05C4
+STATE_LOAD_BYTES = bytes.fromhex("145092e5")   # verified outdoor arena (sand + grass), used when a battle has no map
 
 C_BG = 0x8000 | (12 << 10) | (3 << 5) | 2       # navy
 C_HI = 0x8000 | (0 << 10) | (16 << 5) | 31      # orange
@@ -557,6 +562,7 @@ battle_table:
                         "expect": struct.pack('<I', ORIG_UPDATE).hex(),
                         "hex": struct.pack("<I", cave).hex(),
                         "comment": "Update -> Capture Select wrapper"})
+    patches += skip_browser_patches(ks)
     out = ROOT / "work/capture_select"
     out.mkdir(parents=True, exist_ok=True)
     (out / "capture_select_patch.json").write_text(json.dumps(patches, indent=1))
@@ -571,6 +577,38 @@ battle_table:
     print(f"cave {cave:#010x}-{end:#010x}: {len(head) - len(fnt)} bytes code+strings, font {len(fnt)}, {n} battles")
     assert end < 0x0212CFC0, "cave would overlap the heap"
     print(f"wrote {out/'capture_select_patch.json'} and capture_select_list.csv")
+
+
+def skip_browser_patches(ks):
+    """Menu battles must not register into the Browser (save data): in the
+    CCaptureScene state switch, turn a request for AddBrowser (10) or
+    CheckRelease (11) into exit (7) when the capture's return scene
+    (request block 0x020B7AB8 + 8 = CaptureSetup+0x144) is the title (0x2C).
+    Only Capture Select sets that return scene; field captures use 0x1B.
+    State numbers were read from the singletons' vptrs in the emulator
+    (docs/scene_system.md section 10)."""
+    ovt = OVT.read_bytes()
+    _id, ram, size, bss = struct.unpack_from("<4I", ovt, 32 * OV3)
+    image = OV3_FILE.read_bytes()
+    assert image[STATE_LOAD - ram:STATE_LOAD - ram + 4] == STATE_LOAD_BYTES
+    cave = ram + size + bss
+    code, _ = ks.asm(f"""
+        ldr  r5, [r2, #0x14]
+        cmp  r5, #10
+        cmpne r5, #11
+        bxne lr
+        ldr  r12, [r1, #8]
+        cmp  r12, #{RETURN_SCENE:#x}
+        moveq r5, #7
+        bx   lr
+    """, cave)
+    bl, _ = ks.asm(f"bl {cave:#x}", STATE_LOAD)
+    return [
+        {"target": f"ov{OV3:03d}", "append_after_bss": bytes(code).hex(),
+         "comment": f"skip AddBrowser/CheckRelease for menu battles (cave {cave:#010x})"},
+        {"target": f"ov{OV3:03d}", "addr": f"{STATE_LOAD:#010x}", "expect": STATE_LOAD_BYTES.hex(),
+         "hex": bytes(bl).hex(), "comment": "state load -> skip-browser check"},
+    ]
 
 
 if __name__ == "__main__":

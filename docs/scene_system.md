@@ -546,10 +546,18 @@ test then steps **AddBrowser (10)** ("Your Browser has registered a new
 Pokémon!"), **CheckRelease (11)** and **exit (7)**. The game returns to the
 title scene `0x2C` and redraws normally, with no hang or crash.
 
-Caveat: the result/Browser states write to the *in-memory* save. On the
-title screen no save is loaded yet (the Browser page showed `R-000` with an
-unrelated sprite). Loading a save should overwrite that RAM, but this isn't
-verified: don't save the game after using Capture Select until it is.
+**Browser registration is skipped for menu battles.** The AddBrowser state
+writes to the in-memory save (on the title screen no save is loaded, and the
+Browser page showed `R-000` with an unrelated sprite). The patch therefore
+hooks the `CCaptureScene` state switch: the load of the requested state
+(ov3 `0x020D05D8`, `ldr r5,[r2,#0x14]`) becomes a `bl` to a cave after ov3's
+BSS (`0x02126AC0`). That cave turns a request for AddBrowser (10) or
+CheckRelease (11) into exit (7) when the return scene (`CaptureSetup+0x144`)
+is the title `0x2C`, which only Capture Select sets (field captures use
+`0x1B`). Menu battles still show the capture-rank result screen, then return
+to the title. Verified (`test_capture_finish.py` on the patched ROM): Win →
+Result → request AddBrowser (10) → immediately scene `0x2C`, with no
+Browser screen and a normal title afterwards.
 
 **Not yet verified:** finishing a capture with real (touch) input (result/browser
 states may touch save data); real hardware/flashcarts.
