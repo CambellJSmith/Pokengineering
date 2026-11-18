@@ -41,7 +41,7 @@ research/capture/wild_spawns_2026-11-17.csv
 
 The exact stopping point (updated **2026-11-17**) is:
 
-> **All three capture sources are now extracted statically:** sky `1C10` scripts (20), field scripted captures (158, `tools/analyze_field_captures.py`), and free-roaming wild placements from the map placement packages (2,549, `tools/extract_wild_spawns.py`). Every field capture goes through the resident `CaptureSetup` (`0x020B797C`) → script `sToCapture` → field state 3 → scene `0x29` → scene `2`. Next: merge everything into one capture database, then build Capture Select as a scene transition. See **[docs/scene_system.md](docs/scene_system.md)**.
+> **Capture Select is a working ROM patch.** On the title screen, SELECT opens a 764-battle menu covering all 309 species with capture data (story/quest events with their full target groups and options, capture tutorials, sky captures, co-op captures, wild Pokémon, and EXTRA variants). Each battle has an arena background. Controls: L/R jump between sections, START picks a styler preset (Normal/Strong/Max), and A starts the battle; the menu reopens on the same entry afterwards, and Browser registration is skipped. Build steps and internals: **[docs/scene_system.md](docs/scene_system.md)** §10.
 
 Do **not** restart from species-ID searches or from `1C10`; those paths are already understood as described below.
 
@@ -804,7 +804,7 @@ Statically, every capture source is now located and extracted (`docs/scene_syste
 2. The 1,581 unnamed wild placements are all in the **multiplayer** placement set (entries 7707–8130, base `0x1E1B`, selected by `CCommuContext`). They matter for Capture Select only if co-op captures are wanted; their map index comes from runtime quest data `0x020B8A92`.
 3. Work out what distinguishes variant Ranger IDs of the same species (`FPKD`/`CPOK` fields: HP, difficulty, behaviour).
 4. Optional dynamic confirmation: `gdb -q -x tools/gdb/ordinary_capture_trace.gdb`, walk into a wild Pokémon, and expect `[CAP_ADD] dex=…` and scenes `1 → 0x29 → 2 → 0x1B → 1`.
-5. Capture Select: **proven live** (`tools/emu/capture_select_poc.py`). Next, implement it as a ROM patch: a title/main-menu hook that fills `CaptureSetup` from a selection list and returns scene `2`. Use `tools/patch_code_rom.py` (uncompressed code, no BLZ compressor needed).
+5. Capture Select: **done as a ROM patch** (`tools/capture_select/build_patch.py` + `tools/patch_code_rom.py`; see item 5 in the previous list and `docs/scene_system.md` §10). Remaining: real touch input and real hardware tests.
 6. Pick per-target arena/BGM from the database (`CAP_ARENA`/`CAP_BGM` of the original script, or the map's default arena).
 
 ---
@@ -864,4 +864,4 @@ python3 tools/scene_map.py --csv research/capture/scene_table.csv
 
 ## Final stopping point — 2026-11-18
 
-> **Capture Select menu: 764 battles covering all 309 species, each with an arena background.** New sources since 2026-11-17: 7 capture tutorials (capture scripts 1506–1512), free-flight sky enemies (`SPKD`), co-op captures (`MPCP`), and full option copying (8 targets, flags, `+0x140/0x150/0x154/0x156`). The database has 584 Ranger IDs / 306 species; tutorial entries are named after their targets. "Intrusion" turned out to be co-op players joining, not Pokémon. A forced-win capture now runs Result → Browser registration → back to the title without crashing (`tools/emu/test_capture_finish.py`). Menu battles skip Browser registration and the release check (ov3 state-switch hook), so they don't touch save data through those screens. Still open: real touch input, real hardware. See `docs/scene_system.md` §6e and §10.
+> **Capture Select menu: 764 battles covering all 309 species, each with an arena background; L/R section jumps, START styler presets, auto-return to the menu after each battle.** New sources since 2026-11-17: 7 capture tutorials (capture scripts 1506–1512), free-flight sky enemies (`SPKD`), co-op captures (`MPCP`), and full option copying (8 targets, flags, `+0x140/0x150/0x154/0x156`). The database has 584 Ranger IDs / 306 species; tutorial entries are named after their targets. "Intrusion" turned out to be co-op players joining, not Pokémon. A forced-win capture now runs Result → Browser registration → back to the title without crashing (`tools/emu/test_capture_finish.py`). Menu battles skip Browser registration and the release check (ov3 state-switch hook), so they don't touch save data through those screens. Still open: real touch input, real hardware. See `docs/scene_system.md` §6e and §10.

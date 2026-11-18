@@ -79,6 +79,10 @@ MANUAL_ARENA_BY_DEX = {485: 40,                  # Heatran -> volcanic red earth
                        151: 17,                  # Mew -> stone ruins
                        386: 48,                  # Deoxys -> sky
                        492: 77}                  # Shaymin -> flower meadow
+# Styler presets (START in the menu): (level -> CaptureSetup+0x6C, energy -> +0x75/+0x76).
+# Verified in the emulator: +0x75/+0x76 = 99 shows "099/099" energy; Clear's +0x6C = 1
+# matches "Styler Level 01" on the result screen. Preset 0 keeps the Clear defaults.
+STYLER_PRESETS = [None, (25, 60), (50, 99)]
 TUTORIAL_CHAPTER = {2: 3, 3: 5, 4: 6, 5: 11, 7: 19}   # tutorial n is first started in chapter C0xx
 # ov3 hook: skip Browser registration / release check for menu battles
 OV3 = 3
@@ -247,6 +251,17 @@ def battles():
     return out
 
 
+def section_of(e):
+    """Menu section for L/R jumps: story/quest events, tutorials, sky, co-op, wild, extra."""
+    lab, desc = e["label"], e["desc"]
+    if desc.startswith("Tutorial"):
+        return "tutorial"
+    for key in ("SKY", "CO-OP", "WILD", "EXTRA"):
+        if lab.startswith(key):
+            return key
+    return "event"
+
+
 def describe(ids):
     names = [ranger_ids.name_of(i) for i in ids]
     if len(set(names)) == 1 and len(names) > 1:
@@ -271,6 +286,14 @@ def main():
 
     blist = battles()
     n = len(blist)
+    starts, prev = [], None
+    for i, e in enumerate(blist):
+        cat = section_of(e)
+        if cat != prev:
+            starts.append(i)
+            prev = cat
+    nsect = len(starts)
+    sections_asm = "\n".join(f"    .short {x}" for x in starts)
     asm = f"""
 wrapper:
     push {{r4-r11, lr}}
@@ -292,6 +315,14 @@ wrapper:
     bne  menu
     tst  r7, #4
     bne  open_menu
+    ldrb r0, [r6, #10]
+    cmp  r0, #0
+    beq  no_reopen
+    add  r0, r0, #1
+    strb r0, [r6, #10]
+    cmp  r0, #32
+    bhs  open_menu
+no_reopen:
     mov  r0, r8
     mov  r1, r9
     mov  r2, r10
@@ -300,6 +331,8 @@ wrapper:
     b    ret
 
 open_menu:
+    mov  r0, #0
+    strb r0, [r6, #10]
     mov  r0, #1
     strb r0, [r6, #6]
     strb r0, [r6, #7]
@@ -331,6 +364,16 @@ menu:
     bne  close_menu
     tst  r7, #1
     bne  launch
+    tst  r7, #8
+    beq  no_start
+    ldrb r0, [r6, #11]
+    add  r0, r0, #1
+    cmp  r0, #3
+    movge r0, #0
+    strb r0, [r6, #11]
+    mov  r0, #1
+    strb r0, [r6, #7]
+no_start:
     mov  r4, #0
     ldrb r2, [r6, #9]
     tst  r5, #0xc0
@@ -354,12 +397,12 @@ menu:
 norep:
     tst  r7, #0x20
     subne r4, r4, #{ROWS}
-    tst  r7, #0x200
-    subne r4, r4, #{ROWS}
     tst  r7, #0x10
     addne r4, r4, #{ROWS}
     tst  r7, #0x100
-    addne r4, r4, #{ROWS}
+    bne  sect_next
+    tst  r7, #0x200
+    bne  sect_prev
     cmp  r4, #0
     beq  nomove
     ldrh r0, [r6, #0]
@@ -381,6 +424,46 @@ wrap_hi:
     cmp  r0, r2
     subge r1, r0, #{ROWS - 1}
     strh r1, [r6, #2]
+    mov  r0, #1
+    strb r0, [r6, #7]
+    b    nomove
+sect_next:
+    ldrh r0, [r6, #0]
+    ldr  r1, =sections
+    ldr  r2, ={{nsect}}
+    mov  r3, #0
+sn_loop:
+    cmp  r3, r2
+    bge  sn_wrap
+    add  r12, r1, r3, lsl #1
+    ldrh r12, [r12]
+    cmp  r12, r0
+    bgt  set_idx
+    add  r3, r3, #1
+    b    sn_loop
+sn_wrap:
+    ldrh r12, [r1]
+    b    set_idx
+sect_prev:
+    ldrh r0, [r6, #0]
+    ldr  r1, =sections
+    ldr  r2, ={{nsect}}
+    sub  r3, r2, #1
+sp_loop:
+    cmp  r3, #0
+    blt  sp_wrap
+    add  r12, r1, r3, lsl #1
+    ldrh r12, [r12]
+    cmp  r12, r0
+    blt  set_idx
+    sub  r3, r3, #1
+    b    sp_loop
+sp_wrap:
+    add  r12, r1, r2, lsl #1
+    ldrh r12, [r12, #-2]
+set_idx:
+    strh r12, [r6, #0]
+    strh r12, [r6, #2]
     mov  r0, #1
     strb r0, [r6, #7]
 nomove:
@@ -444,6 +527,19 @@ added:
     ldrh r0, [r9, #58]
     cmp  r0, r3
     strhne r0, [r1, #0x40]
+    ldrb r0, [r6, #11]
+    cmp  r0, #0
+    beq  no_styler
+    ldr  r1, =styler_table
+    add  r1, r1, r0, lsl #2
+    ldrh r2, [r1]
+    str  r2, [r8, #0x6c]
+    ldrb r2, [r1, #2]
+    strb r2, [r8, #0x75]
+    strb r2, [r8, #0x76]
+no_styler:
+    mov  r0, #1
+    strb r0, [r6, #10]
     mov  r0, #{RETURN_SCENE:#x}
     str  r0, [r8, #0x144]
     mov  r0, #2
@@ -477,6 +573,12 @@ setup_display:
     str  r1, [r0, #0x3c]
     strh r1, [r0, #0x50]
     strh r1, [r0, #0x6c]
+    ldr  r0, =0x04001000
+    mov  r1, #0x10000
+    str  r1, [r0]
+    ldr  r0, =0x05000400
+    ldr  r1, ={C_BG:#x}
+    strh r1, [r0]
     bx   lr
 
 fill_rows:
@@ -503,12 +605,38 @@ redraw:
     ldr  r3, ={C_HEAD:#x}
     ldr  r12, ={C_BG:#x}
     bl   draw_text
+    mov  r0, #23
+    mov  r1, #0
+    ldr  r2, =styler_names
+    ldrb r3, [r6, #11]
+    add  r2, r2, r3, lsl #3
+    ldr  r3, ={C_FG:#x}
+    ldr  r12, ={C_BG:#x}
+    bl   draw_text
     mov  r0, #0
     mov  r1, #23
     ldr  r2, =str_foot
     ldr  r3, ={C_HEAD:#x}
     ldr  r12, ={C_BG:#x}
     bl   draw_text
+    sub  sp, sp, #16
+    ldrh r0, [r6, #0]
+    add  r0, r0, #1
+    mov  r1, sp
+    bl   fmt3
+    mov  r0, #0x2f
+    strb r0, [r1], #1
+    ldr  r0, ={n}
+    bl   fmt3
+    mov  r0, #0
+    strb r0, [r1]
+    mov  r0, #25
+    mov  r1, #23
+    mov  r2, sp
+    ldr  r3, ={C_FG:#x}
+    ldr  r12, ={C_BG:#x}
+    bl   draw_text
+    add  sp, sp, #16
     ldrh r4, [r6, #2]
     mov  r5, #0
 row_loop:
@@ -539,6 +667,25 @@ no_hl:
     b    row_loop
 rows_done:
     pop  {{r4-r11, pc}}
+
+fmt3:
+    mov  r2, #0x30
+f100:
+    cmp  r0, #100
+    subge r0, r0, #100
+    addge r2, r2, #1
+    bge  f100
+    strb r2, [r1], #1
+    mov  r2, #0x30
+f10:
+    cmp  r0, #10
+    subge r0, r0, #10
+    addge r2, r2, #1
+    bge  f10
+    strb r2, [r1], #1
+    add  r2, r0, #0x30
+    strb r2, [r1], #1
+    bx   lr
 
 draw_text:
     push {{r4-r11, lr}}
@@ -581,15 +728,33 @@ dt_end:
 
     .ltorg
 str_title:
-    .asciz "CAPTURE SELECT       A:GO B:BACK"
+    .asciz "CAPTURE SELECT  STYLER:"
     .align 2
 str_foot:
-    .asciz "UP/DN:MOVE L/R:PAGE {n:3d} BATTLES"
+    .asciz "L/R:SECTION START:STYLER"
+    .align 2
+styler_names:
+    .ascii "NORMAL"
+    .byte 0, 0
+    .ascii "STRONG"
+    .byte 0, 0
+    .ascii "MAX"
+    .byte 0, 0, 0, 0, 0
+styler_table:
+    .short 0
+    .byte 0, 0
+    .short {STYLER_PRESETS[1][0]}
+    .byte {STYLER_PRESETS[1][1]}, 0
+    .short {STYLER_PRESETS[2][0]}
+    .byte {STYLER_PRESETS[2][1]}, 0
+sections:
+{{sections_asm}}
     .align 2
 font:
     .space 768
 battle_table:
 """
+    asm = asm.replace("{nsect}", str(nsect)).replace("{sections_asm}", sections_asm)
     ks = Ks(KS_ARCH_ARM, KS_MODE_ARM)
     code, _ = ks.asm(asm, cave)
     code = bytearray(code)

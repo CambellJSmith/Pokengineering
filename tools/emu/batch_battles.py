@@ -60,6 +60,8 @@ while job_i < len(JOBS):
         elif sid == 0x02 and phase == "launched":
             if "arena" in job and job["arena"] is not None:
                 w(SETUP + 0x13E, job["arena"], "unsigned short")
+            for addr, val, size in job.get("pokes", []):     # experiments: [addr, value, 1|2|4]
+                w(addr, val, {1: "unsigned char", 2: "unsigned short", 4: "unsigned int"}[size])
             result = {"idx": job.get("idx"), "name": job["name"], "arena": r16(SETUP + 0x13E),
                       "count": r32(SETUP), "ids": [r16(SETUP + 0x10 + 12 * k) for k in range(min(r32(SETUP), 8))],
                       "ok": False}
