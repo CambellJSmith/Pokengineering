@@ -523,7 +523,22 @@ runs.
 s150=1`; `162 Latios SKY` → LATIOS boss capture; `002 Buizel+Croagunk` →
 `flags=0x2 v154=13 bgm=1` copied from the event.
 
-**Not yet verified:** finishing a capture with real input (result/browser
+**Finishing a capture** (`tools/emu/test_capture_finish.py`, 2026-11-18):
+the capture's state numbers, read from the singletons' vptrs, are
+`1 Normal, 2 Win, 3 Lose, 4 Runaway, 5 Reward, 6 Intrusion, 7 exit,
+9 Result, 10 AddBrowser, 11 CheckRelease, 12 DataChange`. Forcing **Win (2)**
+in a menu-launched capture leads the game to **Result (9)**: "Capture Rank S",
+styler level/EXP, waiting for "Touch to skip". Touch can't be injected, so the
+test then steps **AddBrowser (10)** ("Your Browser has registered a new
+Pokémon!"), **CheckRelease (11)** and **exit (7)**. The game returns to the
+title scene `0x2C` and redraws normally, with no hang or crash.
+
+Caveat: the result/Browser states write to the *in-memory* save. On the
+title screen no save is loaded yet (the Browser page showed `R-000` with an
+unrelated sprite). Loading a save should overwrite that RAM, but this isn't
+verified: don't save the game after using Capture Select until it is.
+
+**Not yet verified:** finishing a capture with real (touch) input (result/browser
 states may touch save data); real hardware/flashcarts.
 
 ## 8. Consequence for Capture Select
