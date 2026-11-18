@@ -481,7 +481,7 @@ menu on the bottom screen. UP/DOWN move (hold to repeat), LEFT/RIGHT or L/R
 page by 20, **A** starts the highlighted battle and **B** closes the menu
 (the title reloads). After a battle the game returns to the title (`0x2C`).
 
-**Menu entries (582)**, generated from `research/capture/capture_database.csv`
+**Menu entries (764)**, generated from `research/capture/capture_database.csv`
 (full list: `work/capture_select/capture_select_list.csv`):
 - every distinct scripted field capture with **all** its targets (up to 8)
   and options (BGM, arena, flags `+0x142`, `+0x140`, `+0x154`, `+0x156`),
@@ -489,7 +489,14 @@ page by 20, **A** starts the highlighted battle and **B** closes the menu
 - the 7 capture tutorials (`Capture tutorial TUTORIALn`, `+0x150 = n`);
 - every sky capture: scripted `1C10` and free-flight `SPKD` enemies (`SKY`);
 - every co-op capture Pokémon (`CO-OP`, from `MPCP`);
-- every remaining wild Ranger ID (`WILD m010_02` …).
+- every remaining wild Ranger ID (`WILD m010_02` …);
+- **EXTRA**: every other Ranger ID with capture data but no trigger found
+  (182 entries, `EXTRA #374` …). This adds the three species no source
+  covered, Palkia (369, 428), Heatran (370, 371, 429) and Giratina
+  (373, 374, 431, 432, 453; both formes), plus leftover variants of other
+  species. **All 309 species with capture data are now selectable.**
+  Verified: `EXTRA #374` → GIRATINA (Origin Forme) boss capture. The other
+  EXTRA entries haven't been tried one by one.
 
 **Arena backgrounds (2026-11-18).** In the field, `CFieldToCaptureState::Enter`
 asks the field context (vfunc `+0x50`, ov2 `0x020D89DC`) for the arena when

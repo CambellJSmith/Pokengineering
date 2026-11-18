@@ -16,6 +16,8 @@ Battles (one menu entry each), built from research/capture/capture_database.csv:
   * every sky capture: scripted (1C10) and free-flight sky enemies (SPKD)
   * every co-op capture Pokemon (MPCP)
   * every remaining wild Ranger ID ("WILD <name> <map>")
+  * EXTRA: every other Ranger ID with capture data but no known trigger
+    (e.g. Palkia, Heatran, Giratina), so every species/variant is selectable
 
 Implementation (docs/scene_system.md section 10):
   * ov28 is grown: BSS materialised, code cave appended at 0x020EEA00.
@@ -181,6 +183,16 @@ def battles():
                 wild[rid] = r["map"]
     for rid in sorted(wild, key=lambda i: (ranger_ids.dex_of(i), i)):
         out.append(entry([rid], "WILD " + (wild[rid] or "co-op"), opts(""), map_name=wild[rid]))
+    # EXTRA: every remaining Ranger ID that has capture data (CPOK/FPKD) but
+    # no trigger found (e.g. Palkia, Heatran, Giratina), so that every
+    # species and variant in the game can be picked.
+    used = set(seen_ids) | set(wild)
+    for e in out:
+        used.update(e["ids"])
+    used.update(int(r["ranger_id"]) for r in db if r["source"] == "tutorial" and r["ranger_id"])
+    extra = [i for i in range(1, 770) if i not in used and (ranger_ids.dex_of(i) or 999) < 900]
+    for rid in sorted(extra, key=lambda i: (ranger_ids.dex_of(i), i)):
+        out.append(entry([rid], f"EXTRA #{rid}", opts("")))
     return out
 
 
