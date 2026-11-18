@@ -18,7 +18,12 @@ fi
 [[ -d work/game_acf/archive ]] || bash tools/extract_game_data.sh
 [[ -d work/localization ]] || bash tools/extract_localization.sh
 python3 tools/capture_select/build_patch.py
-python3 tools/patch_code_rom.py "$BASE" --patches "$PATCH" --output "$ROM"
+# Title menu: "Ranger Net" button relabelled "Capture Select" (falls back to the plain base)
+LABELLED=work/capture_select/base_relabelled.nds
+if [[ "${REBUILD:-0}" == 1 || ! -f "$LABELLED" ]]; then
+    bash tools/capture_select/relabel_title_button.sh "$LABELLED" >/dev/null || LABELLED="$BASE"
+fi
+python3 tools/patch_code_rom.py "$LABELLED" --patches "$PATCH" --output "$ROM"
 
 EMU="${DESMUME:-}"
 if [[ -z "$EMU" ]]; then
@@ -27,5 +32,5 @@ if [[ -z "$EMU" ]]; then
     done
 fi
 [[ -n "$EMU" ]] || { echo "DeSmuME not found (apt install desmume, or set DESMUME=/path)"; echo "ROM: $ROOT/$ROM"; exit 1; }
-echo "==> Launching $ROM in $EMU (title screen: SELECT opens Capture Select)"
+echo "==> Launching $ROM in $EMU (title menu: tap Capture Select, or press SELECT)"
 exec "$EMU" "$ROM"
