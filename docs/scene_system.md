@@ -476,6 +476,8 @@ python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \
     --output work/capture_select/capture_select.nds
 ```
 
+**Title-menu button:** the third title-menu button (selection 2 of `CDemoMenuState`, ov28; handler `0x020D96B8`, formerly *Ranger Net* → scene `0x2B`) now sets the reopen counter (STATE+10), so the wrapper opens the menu ~32 frames later. Its label (message bank 0232 #006) is changed to "Capture Select" by `tools/capture_select/relabel_title_button.sh`, which rebuilds `data/data_localize_us.acf` into the base ROM.
+
 **Controls on the title/demo screen:** SELECT opens the **Capture Select**
 menu on the bottom screen (the top screen goes navy). UP/DOWN move (hold to
 repeat), LEFT/RIGHT page by 20, **L/R jump to the previous/next section**

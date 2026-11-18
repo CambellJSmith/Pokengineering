@@ -3,6 +3,7 @@
 
 On the title / demo screen:
     SELECT          open the Capture Select menu
+    (or the title menu's "Capture Select" button, which replaces Ranger Net)
     UP / DOWN       move (hold to repeat)
     LEFT / RIGHT    page (also L / R)
     A               start the highlighted battle
@@ -797,6 +798,7 @@ battle_table:
                         "expect": struct.pack('<I', ORIG_UPDATE).hex(),
                         "hex": struct.pack("<I", cave).hex(),
                         "comment": "Update -> Capture Select wrapper"})
+    patches += title_button_patches(ks, cave + len(cave_bytes))
     patches += skip_browser_patches(ks)
     out = ROOT / "work/capture_select"
     out.mkdir(parents=True, exist_ok=True)
@@ -812,6 +814,38 @@ battle_table:
     print(f"cave {cave:#010x}-{end:#010x}: {len(head) - len(fnt)} bytes code+strings, font {len(fnt)}, {n} battles")
     assert end < 0x0212CFC0, "cave would overlap the heap"
     print(f"wrote {out/'capture_select_patch.json'} and capture_select_list.csv")
+
+
+# Title menu (CDemoMenuState, ov28): the third button (selection 2) was
+# "Ranger Net" (scene 0x2B; the online service is closed). Its handler at
+# 0x020D96B8 is replaced with: request the Capture Select menu (reopen counter
+# STATE+10 = 1, so the title wrapper opens it ~32 frames later), then the
+# normal end of the update. The label is changed in the text archive by
+# play_capture_select.sh / tools/capture_select/relabel_title_button.sh.
+RANGER_NET_HANDLER = 0x020D96B8
+RANGER_NET_BYTES = bytes.fromhex("d00195e5000050e32b00a0b3d00185b5")
+MENU_STATE_DONE = 0x020D972C
+
+
+def title_button_patches(ks, at):
+    image = OV_FILE.read_bytes()
+    off = RANGER_NET_HANDLER - 0x020D1B80
+    assert image[off:off + 16] == RANGER_NET_BYTES, "unexpected Ranger Net handler"
+    code, _ = ks.asm(f"""
+        ldr   r1, ={STATE:#x}
+        ldrb  r0, [r1, #10]
+        cmp   r0, #0
+        moveq r0, #1
+        strbeq r0, [r1, #10]
+        bx    lr
+    """, at)
+    hook, _ = ks.asm(f"bl {at:#x}\nb {MENU_STATE_DONE:#x}", RANGER_NET_HANDLER)
+    return [
+        {"target": f"ov{OV:03d}", "append_after_bss": bytes(code).hex(),
+         "comment": f"title-menu Capture Select button handler ({at:#010x})"},
+        {"target": f"ov{OV:03d}", "addr": f"{RANGER_NET_HANDLER:#010x}", "expect": RANGER_NET_BYTES[:8].hex(),
+         "hex": bytes(hook).hex(), "comment": "Ranger Net button -> Capture Select"},
+    ]
 
 
 def skip_browser_patches(ks):

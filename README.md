@@ -41,7 +41,7 @@ research/capture/wild_spawns_2026-11-17.csv
 
 The exact stopping point (updated **2026-11-17**) is:
 
-> **Capture Select is a working ROM patch.** On the title screen, SELECT opens a 764-battle menu covering all 309 species with capture data (story/quest events with their full target groups and options, capture tutorials, sky captures, co-op captures, wild Pokémon, and EXTRA variants). Each battle has an arena background. Controls: L/R jump between sections, START picks a styler preset (Normal/Strong/Max), and A starts the battle; the menu reopens on the same entry afterwards, and Browser registration is skipped. Build steps and internals: **[docs/scene_system.md](docs/scene_system.md)** §10.
+> **Capture Select is a working ROM patch.** On the title menu, the **Capture Select** button (replacing the defunct Ranger Net) or SELECT opens a 764-battle menu covering all 309 species with capture data (story/quest events with their full target groups and options, capture tutorials, sky captures, co-op captures, wild Pokémon, and EXTRA variants). Each battle has an arena background. Controls: L/R jump between sections, START picks a styler preset (Normal/Strong/Max), and A starts the battle; the menu reopens on the same entry afterwards, and Browser registration is skipped. Build steps and internals: **[docs/scene_system.md](docs/scene_system.md)** §10.
 
 Do **not** restart from species-ID searches or from `1C10`; those paths are already understood as described below.
 
