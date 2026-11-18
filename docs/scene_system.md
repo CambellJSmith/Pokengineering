@@ -344,9 +344,22 @@ no Pokémon sprite, so they're special non-Pokémon targets.
 > to Dex 21 (Spearow)**. The old "Spearow / 21 at `0x0222F104`" identification
 > needs an in-game recheck. The script/offset facts themselves are unaffected.
 
+## 6e. More capture sources (2026-11-18)
+
+| source | data | how it starts | count |
+|---|---|---|---|
+| **Capture tutorials** | capture scripts `0x5E1 + n` (ACF 1506–1512, symbols `INIT`/`MAIN`) | field script `CAP_CLEAR; CAP_150=n; CAP_START`. `CCaptureContext::Init` (ov3 `0x020D20BC`) loads the script when `CaptureSetup+0x150` (= request `+0x14`) > 0, and it spawns its own Pokémon ("The Capture tutorial has begun.") | 7 (5 used by story events: n = 2, 3, 4, 5, 7) |
+| **Sky enemies (free flight)** | `9529.SPKD` (resource `0x2539` → `0x020BD494`), 16-byte records, `+4` = Ranger ID | sky command `1C76(actor, spkdIndex, …)` (ov3 `0x02103D64`) spawns an object with Ranger ID at `+0x9C6`. On capture it adds itself through ov3 `0x02111C24` → `0x02116774` | 33 records / 16 IDs (new: Latios, Drifloon, Honchkrow, Chatot) |
+| **Co-op captures** | `2488.MPCP` (resource `0x9B8` → `0x020BD4C0`), 48-byte records, `+0` = Ranger ID + stats | multiplayer (ov26/ov3) | 223 IDs (42 not seen anywhere else) |
+
+`tools/build_capture_database.py` now includes these sources (`sky_enemy`,
+`coop`, `tutorial`): 3,131 rows, **580 Ranger IDs / 306 species**.
+
 ## 6b. Still open
 
 0. Exact event maps inside chapter scripts (currently only the chapter start map).
+0a. "Intrusion" Pokémon that join mid-capture (`CCaptureIntrusionState`): not
+    yet traced to data.
 
 1. Map names for the **multiplayer placement set** (entries 7707–8130, 1,581
    placements). `CCommuContext` (ov2 `0x0210E89C`) sets the selector byte, so
@@ -444,14 +457,15 @@ menu on the bottom screen. UP/DOWN move (hold to repeat), LEFT/RIGHT or L/R
 page by 20, **A** starts the highlighted battle and **B** closes the menu
 (the title reloads). After a battle the game returns to the title (`0x2C`).
 
-**Menu entries (532)**, generated from `research/capture/capture_database.csv`
+**Menu entries (578)**, generated from `research/capture/capture_database.csv`
 (full list: `work/capture_select/capture_select_list.csv`):
-- every distinct scripted field capture, with all of its targets (up to 7),
-  BGM and arena from the original script, labelled with the event
-  (e.g. `006 Sharpedo x2 C007_EV008`, `007 Lapras C007_START`);
-- every sky (1C10) capture (`... SKY`);
-- every remaining wild Ranger ID (`... WILD m010_02`, or `co-op` for the
-  multiplayer set).
+- every distinct scripted field capture with **all** its targets (up to 8)
+  and options (BGM, arena, flags `+0x142`, `+0x140`, `+0x154`, `+0x156`),
+  labelled with the event (e.g. `041 Beldum x8 C031_AF008_1`);
+- the 7 capture tutorials (`Capture tutorial TUTORIALn`, `+0x150 = n`);
+- every sky capture: scripted `1C10` and free-flight `SPKD` enemies (`SKY`);
+- every co-op capture Pokémon (`CO-OP`, from `MPCP`);
+- every remaining wild Ranger ID (`WILD m010_02` …).
 
 **Implementation** (`tools/capture_select/build_patch.py`):
 - ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020F76AC`
@@ -467,10 +481,10 @@ page by 20, **A** starts the highlighted battle and **B** closes the menu
   changes.
 - A: `CaptureSetup_Clear`, `CaptureSetup_Add3` for each target, BGM `+0x13C`,
   arena `+0x13E`, return scene `+0x144 = 0x2C`; returns scene `2`.
-- Menu state is in `CaptureSetup` entry 7 (`+0x60` index, `+0x62` top,
-  `+0x64` previous keys, `+0x66` open, `+0x67` dirty, `+0x68` saved VRAMCNT_C,
-  `+0x69` key-repeat counter). That entry is unused for ≤7 targets and
-  isn't touched by Clear.
+- Menu state is at `CaptureSetup+0x128` (unused tail of player record 3,
+  which only multiplayer uses and Clear doesn't touch): `+0` index, `+2` top,
+  `+4` previous keys, `+6` open, `+7` dirty, `+8` saved VRAMCNT_C,
+  `+9` key-repeat counter. All 8 entry slots stay free for targets.
 - Keystone pitfall: a conditional `bl` to a forward label assembled as a
   branch-to-self (hung the menu). The builder now rejects any self-branch.
 
@@ -479,6 +493,11 @@ keys injected at the wrapper's `mvn r5, r5`, `0x020EEA20`):
 SELECT draws the menu; DOWN ×3 moves the highlight to `004 Celebi C006_EV005`;
 A loads `CaptureSetup count=1 ids=[193] ret=0x2C` and a CELEBI boss capture
 runs.
+
+2026-11-18 additions, verified the same way: `041 Beldum x8` → `count=8`
+(eight Beldum on screen); `145 Capture tutorial TUTORIAL1` → `count=0
+s150=1`; `162 Latios SKY` → LATIOS boss capture; `002 Buizel+Croagunk` →
+`flags=0x2 v154=13 bgm=1` copied from the event.
 
 **Not yet verified:** finishing a capture with real input (result/browser
 states may touch save data); real hardware/flashcarts.

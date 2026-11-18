@@ -10,9 +10,11 @@ On the title / demo screen:
 After a battle the game returns to the title scene (0x2C).
 
 Battles (one menu entry each), built from research/capture/capture_database.csv:
-  * every scripted field capture sequence (all its targets, BGM and arena from
-    the original script; label shown, e.g. "Sunkern x6 MQ01_EV002_0")
-  * every sky (1C10) capture
+  * every scripted field capture sequence (all its targets and options; label
+    shown, e.g. "Sunkern x6 MQ01_EV002_0")
+  * the 7 capture tutorials (capture scripts 1506-1512)
+  * every sky capture: scripted (1C10) and free-flight sky enemies (SPKD)
+  * every co-op capture Pokemon (MPCP)
   * every remaining wild Ranger ID ("WILD <name> <map>")
 
 Implementation (docs/scene_system.md section 10):
@@ -25,10 +27,14 @@ Implementation (docs/scene_system.md section 10):
     with an embedded 8x8 font (Lat15-VGA8 console font) when needed.
   * A: CaptureSetup_Clear + CaptureSetup_Add3 per target, BGM (+0x13C),
     arena (+0x13E), return scene (+0x144), restore VRAMCNT_C, return scene 2.
-  * Menu state lives in CaptureSetup entry 7 (+0x60..+0x6B), which is unused
-    for <= 7 targets and is not touched by Clear:
-      +0x60 u16 index   +0x62 u16 top   +0x64 u16 previous keys
-      +0x66 u8 open     +0x67 u8 dirty  +0x68 u8 saved VRAMCNT_C  +0x69 u8 repeat
+  * Menu state lives at CaptureSetup+0x128 (unused tail of player record 3,
+    which only multiplayer uses and Clear doesn't touch), so all 8 entry
+    slots are free for targets:
+      +0 u16 index  +2 u16 top  +4 u16 previous keys  +6 u8 open  +7 u8 dirty
+      +8 u8 saved VRAMCNT_C  +9 u8 key-repeat counter
+  * Every option a script sets is copied: targets (up to 8), BGM +0x13C,
+    arena +0x13E, flags |= +0x142, +0x140, capture script +0x150 (tutorials),
+    +0x154, +0x156.
 """
 from __future__ import annotations
 
@@ -57,7 +63,8 @@ CLEAR, ADD3 = 0x020418D4, 0x020419D0
 RETURN_SCENE = 0x2C
 VRAM = 0x06020000
 FONT_FILE = Path("/usr/share/consolefonts/Lat15-VGA8.psf.gz")
-MAX_TARGETS = 7
+MAX_TARGETS = 8
+STATE = 0x020B797C + 0x128   # unused tail of player record 3 (multiplayer only), not touched by Clear
 ROWS = 20
 
 C_BG = 0x8000 | (12 << 10) | (3 << 5) | 2       # navy
@@ -75,16 +82,27 @@ def font_bytes() -> bytes:
 
 
 def battles():
+    """Menu entries as dicts: desc, label, ids, bgm, arena, flags, s150, v140, v154, v156.
+    0xFF / 0xFFFF mean "leave the CaptureSetup_Clear default"."""
     db = list(csv.DictReader(open(ROOT / "research/capture/capture_database.csv")))
 
-    def params(s):
-        bgm = arena = 0xFF
+    def opts(s):
+        o = {"bgm": 0xFF, "arena": 0xFF, "flags": 0, "s150": 0, "v140": 0xFFFF, "v154": 0xFFFF, "v156": 0xFFFF}
         for tok in s.split():
-            if tok.startswith("CAP_BGM=") and tok.split("=")[1]:
-                bgm = int(tok.split("=")[1])
-            if tok.startswith("CAP_ARENA=") and tok.split("=")[1]:
-                arena = int(tok.split("=")[1])
-        return bgm, arena
+            k, _, v = tok.partition("=")
+            if k == "CAP_BGM" and v: o["bgm"] = int(v)
+            elif k == "CAP_ARENA" and v: o["arena"] = int(v)
+            elif k == "CAP_FLAG1": o["flags"] |= 1
+            elif k == "CAP_FLAG2": o["flags"] |= 2
+            elif k == "CAP_FLAG4": o["flags"] |= 4
+            elif k == "CAP_150" and v: o["s150"] = int(v)
+            elif k == "CAP_140" and v: o["v140"] = int(v)
+            elif k == "CAP_154" and v: o["v154"] = int(v)
+            elif k == "CAP_156" and v: o["v156"] = int(v)
+        return o
+
+    def entry(ids, label, o, desc=None):
+        return dict(desc=desc or describe(ids), label=label, ids=ids, **o)
 
     out, seen_ids, seen_keys = [], set(), set()
     groups = collections.OrderedDict()
@@ -94,38 +112,37 @@ def battles():
     scripted = []
     for trig, rows in groups.items():
         ids = [int(r["ranger_id"]) for r in rows][:MAX_TARGETS]
-        bgm, arena = params(rows[0]["params"])
-        key = (tuple(ids), bgm, arena)
+        o = opts(rows[0]["params"])
+        key = (tuple(ids), tuple(sorted(o.items())))
         if key in seen_keys:
             continue
         seen_keys.add(key)
-        scripted.append((rows[0]["label"] or rows[0]["map"], ids, bgm, arena))
-    scripted.sort(key=lambda t: t[0])
-    for label, ids, bgm, arena in scripted:
-        out.append((describe(ids), label, ids, bgm, arena))
-        seen_ids.update(ids)
+        scripted.append(entry(ids, rows[0]["label"] or rows[0]["map"], o))
+    scripted.sort(key=lambda e: e["label"])
+    out += scripted
+    for e in scripted:
+        seen_ids.update(e["ids"])
     for r in db:
-        if r["source"] == "sky_1C10" and r["ranger_id"]:
-            rid = int(r["ranger_id"])
-            key = ((rid,), 0xFF, 0xFF, "sky")
-            if key in seen_keys:
-                continue
-            seen_keys.add(key)
-            out.append((describe([rid]), "SKY", [rid], 0xFF, 0xFF))
-            seen_ids.add(rid)
+        if r["source"] == "tutorial":
+            out.append(entry([], r["label"], opts(r["params"]), desc="Capture tutorial"))
+    for src, label in (("sky_1C10", "SKY"), ("sky_enemy", "SKY"), ("coop", "CO-OP")):
+        for r in db:
+            if r["source"] == src and r["ranger_id"]:
+                rid = int(r["ranger_id"])
+                if rid in seen_ids or (ranger_ids.dex_of(rid) or 999) >= 900:
+                    continue
+                seen_ids.add(rid)
+                out.append(entry([rid], label, opts("")))
     wild = {}
     for r in db:
         if r["source"] == "wild_placement" and r["ranger_id"]:
             rid = int(r["ranger_id"])
-            if rid in seen_ids or rid == 0:
-                continue
-            dex = ranger_ids.dex_of(rid)
-            if dex is None or dex >= 900:
+            if rid in seen_ids or rid == 0 or (ranger_ids.dex_of(rid) or 999) >= 900:
                 continue
             if rid not in wild or (not wild[rid] and r["map"]):
                 wild[rid] = r["map"]
     for rid in sorted(wild, key=lambda i: (ranger_ids.dex_of(i), i)):
-        out.append((describe([rid]), "WILD " + (wild[rid] or "co-op"), [rid], 0xFF, 0xFF))
+        out.append(entry([rid], "WILD " + (wild[rid] or "co-op"), opts("")))
     return out
 
 
@@ -160,16 +177,16 @@ wrapper:
     mov  r9, r1
     mov  r10, r2
     mov  r11, r3
-    ldr  r6, ={SETUP:#x}
+    ldr  r6, ={STATE:#x}
     ldr  r5, =0x04000130
     ldrh r5, [r5]
     mvn  r5, r5
     ldr  r1, =0x3ff
     and  r5, r5, r1
-    ldrh r7, [r6, #0x64]
-    strh r5, [r6, #0x64]
+    ldrh r7, [r6, #4]
+    strh r5, [r6, #4]
     bic  r7, r5, r7
-    ldrb r0, [r6, #0x66]
+    ldrb r0, [r6, #6]
     cmp  r0, #0
     bne  menu
     tst  r7, #4
@@ -183,25 +200,25 @@ wrapper:
 
 open_menu:
     mov  r0, #1
-    strb r0, [r6, #0x66]
-    strb r0, [r6, #0x67]
+    strb r0, [r6, #6]
+    strb r0, [r6, #7]
     mov  r0, #0
-    strb r0, [r6, #0x69]
+    strb r0, [r6, #9]
     ldr  r1, =0x04000242
     ldrb r0, [r1]
-    strb r0, [r6, #0x68]
-    ldrh r0, [r6, #0x60]
+    strb r0, [r6, #8]
+    ldrh r0, [r6, #0]
     ldr  r1, ={n}
     cmp  r0, r1
     movhs r0, #0
-    strh r0, [r6, #0x60]
-    ldrh r1, [r6, #0x62]
+    strh r0, [r6, #0]
+    ldrh r1, [r6, #2]
     cmp  r0, r1
     movlo r1, r0
     add  r2, r1, #{ROWS}
     cmp  r0, r2
     subhs r1, r0, #{ROWS - 1}
-    strh r1, [r6, #0x62]
+    strh r1, [r6, #2]
     bl   setup_display
     bl   redraw
     mvn  r0, #1
@@ -214,13 +231,13 @@ menu:
     tst  r7, #1
     bne  launch
     mov  r4, #0
-    ldrb r2, [r6, #0x69]
+    ldrb r2, [r6, #9]
     tst  r5, #0xc0
     addne r2, r2, #1
     moveq r2, #0
     cmp  r2, #200
     movhi r2, #100
-    strb r2, [r6, #0x69]
+    strb r2, [r6, #9]
     tst  r7, #0x40
     subne r4, r4, #1
     tst  r7, #0x80
@@ -244,7 +261,7 @@ norep:
     addne r4, r4, #{ROWS}
     cmp  r4, #0
     beq  nomove
-    ldrh r0, [r6, #0x60]
+    ldrh r0, [r6, #0]
     add  r0, r0, r4
     ldr  r1, ={n}
 wrap_lo:
@@ -255,18 +272,18 @@ wrap_hi:
     cmp  r0, r1
     subge r0, r0, r1
     bge  wrap_hi
-    strh r0, [r6, #0x60]
-    ldrh r1, [r6, #0x62]
+    strh r0, [r6, #0]
+    ldrh r1, [r6, #2]
     cmp  r0, r1
     movlt r1, r0
     add  r2, r1, #{ROWS}
     cmp  r0, r2
     subge r1, r0, #{ROWS - 1}
-    strh r1, [r6, #0x62]
+    strh r1, [r6, #2]
     mov  r0, #1
-    strb r0, [r6, #0x67]
+    strb r0, [r6, #7]
 nomove:
-    ldrb r0, [r6, #0x67]
+    ldrb r0, [r6, #7]
     cmp  r0, #0
     beq  no_redraw
     bl   redraw
@@ -281,10 +298,11 @@ close_menu:
 
 launch:
     bl   restore_vram
-    ldrh r0, [r6, #0x60]
+    sub  r8, r6, #0x128
+    ldrh r0, [r6, #0]
     ldr  r9, =battle_table
     add  r9, r9, r0, lsl #6
-    mov  r0, r6
+    mov  r0, r8
     bl   {CLEAR:#x}
     ldrb r10, [r9, #32]
     mov  r11, #0
@@ -294,13 +312,13 @@ addloop:
     add  r1, r9, #36
     add  r1, r1, r11, lsl #1
     ldrh r1, [r1]
-    mov  r0, r6
+    mov  r0, r8
     mov  r2, #0
     bl   {ADD3:#x}
     add  r11, r11, #1
     b    addloop
 added:
-    add  r1, r6, #0x100
+    add  r1, r8, #0x100
     ldrb r0, [r9, #33]
     cmp  r0, #0xff
     moveq r0, #0
@@ -309,18 +327,34 @@ added:
     cmp  r0, #0xff
     ldreq r0, =0xffff
     strh r0, [r1, #0x3e]
+    ldrb r0, [r9, #35]
+    ldrh r2, [r1, #0x42]
+    orr  r2, r2, r0
+    strh r2, [r1, #0x42]
+    ldrb r0, [r9, #56]
+    str  r0, [r1, #0x50]
+    ldr  r3, =0xffff
+    ldrh r0, [r9, #52]
+    cmp  r0, r3
+    strhne r0, [r1, #0x54]
+    ldrh r0, [r9, #54]
+    cmp  r0, r3
+    strhne r0, [r1, #0x56]
+    ldrh r0, [r9, #58]
+    cmp  r0, r3
+    strhne r0, [r1, #0x40]
     mov  r0, #{RETURN_SCENE:#x}
-    str  r0, [r6, #0x144]
+    str  r0, [r8, #0x144]
     mov  r0, #2
 ret:
     pop  {{r4-r11, pc}}
 
 restore_vram:
-    ldrb r0, [r6, #0x68]
+    ldrb r0, [r6, #8]
     ldr  r1, =0x04000242
     strb r0, [r1]
     mov  r0, #0
-    strb r0, [r6, #0x66]
+    strb r0, [r6, #6]
     bx   lr
 
 setup_display:
@@ -357,7 +391,7 @@ fr_loop:
 redraw:
     push {{r4-r11, lr}}
     mov  r0, #0
-    strb r0, [r6, #0x67]
+    strb r0, [r6, #7]
     mov  r0, #0
     mov  r1, #24
     ldr  r2, ={C_BG | (C_BG << 16):#x}
@@ -374,7 +408,7 @@ redraw:
     ldr  r3, ={C_HEAD:#x}
     ldr  r12, ={C_BG:#x}
     bl   draw_text
-    ldrh r4, [r6, #0x62]
+    ldrh r4, [r6, #2]
     mov  r5, #0
 row_loop:
     cmp  r5, #{ROWS}
@@ -383,7 +417,7 @@ row_loop:
     ldr  r8, ={n}
     cmp  r7, r8
     bge  rows_done
-    ldrh r9, [r6, #0x60]
+    ldrh r9, [r6, #0]
     ldr  r10, ={C_BG:#x}
     cmp  r7, r9
     bne  no_hl
@@ -470,13 +504,16 @@ battle_table:
             if int(ins.op_str[1:], 16) == ins.address:
                 raise SystemExit(f"assembler produced a self-branch at {ins.address:#x}: {ins.mnemonic}")
     table = bytearray()
-    for i, (desc, label, ids, bgm, arena) in enumerate(blist):
+    # record: text[32] | count u8 @32 | bgm u8 @33 | arena u8 @34 | flags u8 @35 |
+    #         ids u16[8] @36 | +0x154 u16 @52 | +0x156 u16 @54 | +0x150 u8 @56 | +0x140 u16 @58
+    for i, e in enumerate(blist):
         rec = bytearray(64)
-        txt = entry_text(i, desc, label).encode("ascii")
+        txt = entry_text(i, e["desc"], e["label"]).encode("ascii")
         rec[:len(txt)] = txt
-        rec[32], rec[33], rec[34] = len(ids), bgm & 0xFF, arena & 0xFF
-        for k, rid in enumerate(ids):
+        rec[32:36] = bytes([len(e["ids"]), e["bgm"] & 0xFF, e["arena"] & 0xFF, e["flags"]])
+        for k, rid in enumerate(e["ids"]):
             struct.pack_into("<H", rec, 36 + 2 * k, rid)
+        struct.pack_into("<HHBxH", rec, 52, e["v154"], e["v156"], e["s150"], e["v140"])
         table += rec
     cave_bytes = head + bytes(table)
 
@@ -492,10 +529,11 @@ battle_table:
     (out / "capture_select_patch.json").write_text(json.dumps(patches, indent=1))
     with open(out / "capture_select_list.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["index", "menu_text", "ranger_ids", "names", "bgm", "arena"])
-        for i, (desc, label, ids, bgm, arena) in enumerate(blist):
-            w.writerow([i, entry_text(i, desc, label), " ".join(map(str, ids)),
-                        " | ".join(ranger_ids.name_of(x) for x in ids), bgm, arena])
+        w.writerow(["index", "menu_text", "ranger_ids", "names", "bgm", "arena", "flags", "capture_script", "v154", "v156", "v140"])
+        for i, e in enumerate(blist):
+            w.writerow([i, entry_text(i, e["desc"], e["label"]), " ".join(map(str, e["ids"])),
+                        " | ".join(ranger_ids.name_of(x) for x in e["ids"]), e["bgm"], e["arena"],
+                        e["flags"], e["s150"], e["v154"], e["v156"], e["v140"]])
     end = cave + len(cave_bytes)
     print(f"cave {cave:#010x}-{end:#010x}: {len(head) - len(fnt)} bytes code+strings, font {len(fnt)}, {n} battles")
     assert end < 0x0212CFC0, "cave would overlap the heap"

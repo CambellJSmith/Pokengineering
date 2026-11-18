@@ -862,6 +862,6 @@ python3 tools/scene_map.py --csv research/capture/scene_table.csv
 
 ---
 
-## Final stopping point — 2026-11-17
+## Final stopping point — 2026-11-18
 
-> **Capture Select has a real menu:** in the patched ROM, SELECT on the title screen opens an on-screen list of 532 battles (every scripted capture event with its full target group, every sky capture, every wild Pokémon). A starts the chosen battle, and the game returns to the title afterwards. Verified in headless DeSmuME. Next: test a fully completed capture with real input, then polish (arena backgrounds, nicer names).
+> **Capture Select menu: 578 battles.** New sources since 2026-11-17: 7 capture tutorials (capture scripts 1506–1512), free-flight sky enemies (`SPKD`), co-op captures (`MPCP`), and full option copying (8 targets, flags, `+0x140/0x150/0x154/0x156`). The database has 580 Ranger IDs / 306 species. Still open: "intrusion" Pokémon that join mid-capture, exact event maps inside chapter scripts, and a fully completed capture with real input. See `docs/scene_system.md` §6e and §10.

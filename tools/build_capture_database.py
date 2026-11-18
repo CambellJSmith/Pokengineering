@@ -84,6 +84,56 @@ def label_map(label):
     return f"m{int(m.group(1)):03d}_{int(m.group(2)):02d}" if m else ""
 
 
+ARCHIVE = ROOT / "work" / "game_acf" / "archive"
+
+
+def _table(name):
+    """Standard Guardian Signs data table: magic, u32 recsize, u32 count, pad."""
+    import struct
+    p = ARCHIVE / name
+    if not p.exists():
+        return 0, []
+    d = p.read_bytes()
+    rs, n = struct.unpack_from("<II", d, 4)
+    return rs, [d[0x10 + rs * i:0x10 + rs * (i + 1)] for i in range(n)]
+
+
+def extra_sources(nm):
+    """Capture sources outside the field scripts / map placements.
+
+    sky_enemy : 9529.SPKD (resource 0x2539 -> 0x020BD494), 16-byte records,
+                +4 = Ranger ID. Spawned by sky command 1C76(actor, spkdIndex, ...)
+                (ov3 0x02103D64); the sky object adds itself to the sky capture
+                list via 0x02111C24 -> 0x02116774.
+    coop      : 2488.MPCP (resource 0x9B8 -> 0x020BD4C0), 48-byte records,
+                +0 = Ranger ID: multiplayer/co-op capture Pokemon (ov26/ov3).
+    tutorial  : capture scripts 0x5E1 + n (ACF 1506-1512), started by field
+                scripts with CAP_CLEAR; CAP_150=n; CAP_START. CCaptureContext::Init
+                (ov3 0x020D20BC) loads them when CaptureSetup+0x150 > 0; they
+                run "The Capture tutorial has begun." and spawn their own targets.
+    """
+    import struct
+    rows = []
+    _, spkd = _table("9529.SPKD")
+    for i, r in enumerate(spkd):
+        rid = struct.unpack_from("<H", r, 4)[0]
+        rows.append({"source": "sky_enemy", "ranger_id": rid, "name": nm(rid), "map": "",
+                     "label": "SKY", "trigger": f"SPKD #{i}", "x": "", "z": "",
+                     "params": "", "note": "free-flight sky enemy (1C76)"})
+    _, mpcp = _table("2488.MPCP")
+    for i, r in enumerate(mpcp):
+        rid = struct.unpack_from("<H", r, 0)[0]
+        rows.append({"source": "coop", "ranger_id": rid, "name": nm(rid), "map": "",
+                     "label": "CO-OP", "trigger": f"MPCP #{i}", "x": "", "z": "",
+                     "params": "", "note": "multiplayer capture data"})
+    for n in range(1, 8):
+        rows.append({"source": "tutorial", "ranger_id": "", "name": f"Capture tutorial {n}",
+                     "map": "", "label": f"TUTORIAL{n}", "trigger": f"capture script {0x5E1 + n}",
+                     "x": "", "z": "", "params": f"CAP_150={n}",
+                     "note": "count 0; the capture script spawns the targets"})
+    return rows
+
+
 def main():
     nm = ranger_ids.name_of
 
@@ -154,6 +204,8 @@ def main():
             "params": f"f2={w['f2']} f3={w['f3']} f8..f15={','.join(w[f'f{k}'] for k in range(8, 16))}",
             "note": "" if w["map"] else f"{w['set']} placement set (map from runtime quest data)",
         })
+
+    out.extend(extra_sources(nm))
 
     for row in out:
         row["definition_key"] = f"id{row['ranger_id']}" if row["ranger_id"] != "" else "unresolved"
