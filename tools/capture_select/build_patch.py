@@ -849,6 +849,7 @@ battle_table:
 # fresh title opens the menu ~32 frames later, exactly as after a battle.
 # (Opening it in place left the title's fade-out darkening the screen.) The label is changed in the text archive by
 # play_capture_select.sh / tools/capture_select/relabel_title_button.sh.
+ORIG_DRAW = 0x020D21C0                          # CDemoScene / CGameTitleScene vtable slot 3
 RANGER_NET_HANDLER = 0x020D96B8
 RANGER_NET_BYTES = bytes.fromhex("d00195e5000050e32b00a0b3d00185b5")
 MENU_STATE_DONE = 0x020D972C
@@ -858,6 +859,19 @@ def title_button_patches(ks, at):
     image = OV_FILE.read_bytes()
     off = RANGER_NET_HANDLER - 0x020D1B80
     assert image[off:off + 16] == RANGER_NET_BYTES, "unexpected Ranger Net handler"
+    # Draw (vtable slot 3) wrapper: while the menu is open, skip the title's
+    # Draw (3D render + SwapBuffers + dual-screen capture), so nothing but the
+    # menu touches the display regardless of emulator timing.
+    draw, _ = ks.asm(f"""
+        ldr   r12, ={STATE:#x}
+        ldrb  r12, [r12, #6]
+        cmp   r12, #0
+        bxne  lr
+        b     {ORIG_DRAW:#x}
+    """, at)
+    draw = bytes(draw)
+    draw_at = at
+    at += len(draw)
     code, _ = ks.asm(f"""
         ldr   r1, ={STATE:#x}
         mov   r0, #1
@@ -870,8 +884,15 @@ def title_button_patches(ks, at):
     """, at)
     hook, _ = ks.asm(f"bl {at:#x}\nb {MENU_STATE_DONE:#x}", RANGER_NET_HANDLER)
     return [
+        {"target": f"ov{OV:03d}", "append_after_bss": draw.hex(),
+         "comment": f"Draw wrapper: skip title Draw while the menu is open ({draw_at:#010x})"},
         {"target": f"ov{OV:03d}", "append_after_bss": bytes(code).hex(),
          "comment": f"title-menu Capture Select button handler ({at:#010x})"},
+    ] + [
+        {"target": f"ov{OV:03d}", "addr": f"{a + 4:#010x}", "expect": struct.pack('<I', ORIG_DRAW).hex(),
+         "hex": struct.pack("<I", draw_at).hex(), "comment": "Draw -> menu-aware wrapper"}
+        for a in VT_SLOT2
+    ] + [
         {"target": f"ov{OV:03d}", "addr": f"{RANGER_NET_HANDLER:#010x}", "expect": RANGER_NET_BYTES[:8].hex(),
          "hex": bytes(hook).hex(), "comment": "Ranger Net button -> Capture Select"},
     ]
