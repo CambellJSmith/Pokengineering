@@ -99,6 +99,13 @@ MANUAL_ARENA_BY_DEX = {485: 40,                  # Heatran -> volcanic red earth
 # matches "Styler Level 01" on the result screen. Preset 0 keeps the Clear defaults.
 STYLER_PRESETS = [None, (25, 60), (50, 99)]
 TUTORIAL_CHAPTER = {2: 3, 3: 5, 4: 6, 5: 11, 7: 19}   # tutorial n is first started in chapter C0xx
+# Tutorial 1 (capture script 1506, never started by the story) is a stub: it
+# runs the shared tutorial intro and starts the capture without adding a
+# Pokemon (3C03/3C05). Count 0 gives a one-slot target array whose slot 0 is
+# NULL, and the opening capture state (ov3 0x020F9AEC) reads that slot's
+# species ([NULL+0x1E6]): a data abort on hardware/melonDS. The menu adds this
+# target itself instead (the tutorial Pikachu that tutorials 2 and 7 use).
+TUTORIAL_MENU_TARGET = {1: 386}
 # ov3 hook: skip Browser registration / release check for menu battles
 OV3 = 3
 OV3_FILE = ROOT / "work/code_analysis/executables/overlays/overlay_003.bin"
@@ -297,11 +304,14 @@ def battles():
         if r["source"] == "tutorial":
             tut.setdefault(r["label"], (r, []))[1].extend([int(r["ranger_id"])] if r["ranger_id"] else [])
     for label, (r, ids) in sorted(tut.items()):
-        # count stays 0: the tutorial's capture script adds its own targets
-        desc = "Tutorial %s: %s" % (label[-1], describe(ids)) if ids else "Tutorial %s" % label[-1]
-        chap = TUTORIAL_CHAPTER.get(int(label[-1]))
+        n = int(label[-1])
+        menu_ids = [TUTORIAL_MENU_TARGET[n]] if n in TUTORIAL_MENU_TARGET else []
+        shown = ids or menu_ids
+        desc = "Tutorial %s: %s" % (n, describe(shown)) if shown else "Tutorial %s" % n
+        chap = TUTORIAL_CHAPTER.get(n)
         e = entry(ids, "", opts(r["params"]), desc=desc, map_name=chapters.get(chap, ""))
-        e["ids"] = []        # count stays 0: the tutorial's capture script adds its own targets
+        # count stays 0 when the tutorial's capture script adds its own targets
+        e["ids"] = menu_ids
         out.append(e)
     for src, label in (("sky_1C10", "SKY"), ("sky_enemy", "SKY"), ("coop", "CO-OP")):
         for r in db:
