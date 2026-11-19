@@ -8,9 +8,15 @@ On the title / demo screen:
     LEFT / RIGHT    page by one screen (11 rows)
     L / R           previous / next section (Story & Quests, Tutorials, Sky,
                     Co-op, Wild Pokemon, Extras)
-    START           styler preset (Lv.1 / Lv.25 / Lv.50)
+    START           styler preset (Lv.1 / Lv.25 / Lv.50 / Lv.99 / Lv.99+ upgrades)
+    X               jump to a random battle in the current section
     A               start the highlighted battle (fades out)
     B               close the menu (fades out, title reloads)
+    Touch           tap a battle to pick it, tap it again to start; drag the
+                    scrollbar; tap the section heading's arrows, the styler
+                    or a footer item
+The top screen shows the highlighted battle's details: every target, the
+arena, the number of Pokemon, and the styler preset's energy and power.
 After a battle (or B) the game returns to the title/demo scene (0x25).
 
 Battles (one menu entry each), built from research/capture/capture_database.csv:
@@ -28,15 +34,19 @@ Implementation (docs/scene_system.md section 10):
   * Update (vtable slot 2) of CDemoScene / CGameTitleScene -> `wrapper`.
     Closed: call the original Update unless SELECT is newly pressed.
     Open: skip the title logic, keep the bottom-screen engine (A) in mode 5
-    with BG3 as a 256x192 direct-colour bitmap in VRAM bank C (mapped to main
-    BG at 0x06020000; C is unused on the title), handle input, and redraw
-    when needed. The look follows the title screen: sky-blue gradient, navy
+    with BG3 as a 256x192 direct-colour bitmap in VRAM bank D (mapped to main
+    BG at 0x06020000; D is unused on the title), handle input, and redraw
+    when needed. The top screen (sub engine) gets the same kind of bitmap in
+    VRAM bank C (sub BG 0x06200000; bank H, which also maps there on the
+    title, is switched off meanwhile) for the battle details. The look follows
+    the title screen: sky-blue gradient, navy
     header with the logo's yellow/orange rules, a cloud-white rounded list
     panel, yellow highlight bar, drop-shadowed proportional text (Lat15-VGA8
     glyphs trimmed to their width, plus arrow / e-acute / multiply glyphs),
     a per-section list with scrollbar, and MASTER_BRIGHT fades.
   * A: CaptureSetup_Clear + CaptureSetup_Add3 per target, BGM (+0x13C),
-    arena (+0x13E), return scene (+0x144), restore VRAMCNT_C, return scene 2.
+    arena (+0x13E), styler preset, return scene (+0x144), restore VRAMCNT_C /
+    _D / _H, return scene 2.
   * Menu state lives at CaptureSetup+0x128 (unused tail of player record 3,
     which only multiplayer uses and Clear doesn't touch), so all 8 entry
     slots are free for targets:
@@ -100,8 +110,29 @@ MANUAL_ARENA_BY_DEX = {485: 40,                  # Heatran -> volcanic red earth
 # level table 0x020BD41C (getter 0x0205F3C4: +4 energy, +6 power; loaded on the title
 # screen), plus 5 per upgrade. The menu does the same lookup at launch, so a preset is a
 # real styler of that level (Lv.50: 104 energy, power 205; Lv.1 keeps Clear's 10/10).
-STYLER_LEVELS = [1, 25, 50, 99]
+#
+# Upgrades (Styler Modification, save +0x40..+0x46 -> record +0x7D..+0x83: Energy,
+# Power, Line, Defense, Charge, Recovery, Latent Power Plus). Only the first three
+# have a known effect: energy and power +5 per level (ARM9 0x0205D7A0 / 0x0205D804),
+# line 0x1C0 + 16 per level (0x0205D860). The in-game cap per upgrade hasn't been
+# found yet, so the "+" preset uses UPGRADE_LEVEL for those three and leaves the
+# other four at 0. Max energy is a byte (record +0x75/+0x76), so 164 + 5 x level
+# must stay <= 255.
+UPGRADE_LEVEL = 10
+# (styler level, Energy Plus, Power Plus, Line Plus); START cycles through them
+STYLER_PRESETS = [(1, 0, 0, 0), (25, 0, 0, 0), (50, 0, 0, 0), (99, 0, 0, 0),
+                  (99, UPGRADE_LEVEL, UPGRADE_LEVEL, UPGRADE_LEVEL)]
+STYLER_LEVELS = [p[0] for p in STYLER_PRESETS]
 LEVEL_TABLE, LEVEL_GET = 0x020BD41C, 0x0205F3C4
+PLST_FILE = ROOT / "work/game_acf/archive/2484.PLST"   # the level table's file: 100 x 44 bytes
+# Input: X / Y aren't in KEYINPUT; the ARM7 puts them in the shared word 0x027FFFA8
+# (bits 10/11, 0 = pressed; NitroSDK HW_BUTTON_XY_BUF). The game's calibrated
+# touch state (found by diffing RAM with the stylus at two points): u16 x, u16 y
+# at 0x020AA1A0, u8 newly touched +8, u8 held +9, u8 released +10.
+XY_BUF = 0x027FFFA8
+TOUCH = 0x020AA1A0
+SUB_VRAM = 0x06200000   # VRAM C mapped to the sub (top-screen) engine's BG while the menu is open
+# (the menu itself moved from C to D: only C can be a sub BG bank, D's MST 4 is sub OBJ)
 TUTORIAL_CHAPTER = {2: 3, 3: 5, 4: 6, 5: 11, 7: 19}   # tutorial n is first started in chapter C0xx
 # Tutorial 1 (capture script 1506, never started by the story) is a stub: it
 # runs the shared tutorial intro and starts the capture without adding a
@@ -316,6 +347,7 @@ def battles():
         e = entry(ids, "", opts(r["params"]), desc=desc, map_name=chapters.get(chap, ""))
         # count stays 0 when the tutorial's capture script adds its own targets
         e["ids"] = menu_ids
+        e["shown_ids"] = shown         # what the top screen lists
         out.append(e)
     for src, label in (("sky_1C10", "SKY"), ("sky_enemy", "SKY"), ("coop", "CO-OP")):
         for r in db:
@@ -418,6 +450,78 @@ def menu_labels(blist, metrics):
     return [(n, t) for n, t, _s in out]
 
 
+# Arena look by ID (screenshots of all 66 arenas: docs/scene_system.md section 10)
+ARENA_LOOKS = {"Grassy meadow": (0, 15, 16, 19, 77, 78), "Sand and grass": (2, 13, 67, 74),
+               "Dirt": (4, 21, 23, 24, 25, 33, 44, 45, 49, 50, 79, 80), "Water": (5, 9, 51, 39),
+               "Stone and ruins": (6, 7, 8, 14, 17, 18, 20, 41, 42, 43, 52, 65, 69, 70, 71, 72, 75, 76, 82),
+               "Indoors": (11, 12, 27, 32, 34, 35, 37, 38, 66, 68), "Snow and ice": (26, 28, 36, 46),
+               "Dark cave": (31,), "Volcanic": (10, 40), "Sky": (48,), "Fog": (47,), "Temple": (73, 81)}
+ARENA_NAME = {a: name for name, ids in ARENA_LOOKS.items() for a in ids}
+
+# Top-screen details layout (256x192): header band, title, panel, styler line, hint
+DPANEL = (6, 50, 244, 96)          # x, y, w, h
+D_LABEL_X, D_VALUE_X = 16, 80
+D_ROW0, D_ROWS = 56, 4             # target lines
+D_DIVIDER = 104
+D_ARENA_Y, D_TOTAL_Y = 112, 128
+D_STYLER_Y, D_HINT_Y = 152, 180   # styler name, its energy/power 12 px below, hint
+D_VALUE_PX = DPANEL[0] + DPANEL[2] - 8 - D_VALUE_X
+
+
+def details(blist, labels, metrics):
+    """Per battle: (flags, NUL-separated strings) for the top screen:
+    kind, title, target lines..., "", arena, total. flags bit 0: 2x title."""
+    out = []
+    for e, (_name, tag) in zip(blist, labels):
+        sec = section_of(e)
+        kind = {"event": {"Story": "Story event"}.get(tag, tag), "tutorial": "Capture " + tag.lower(),
+                "SKY": "Sky capture", "CO-OP": "Co-op capture", "WILD": "Wild Pok\x82mon",
+                "EXTRA": "Extra"}[sec]
+        ids = e.get("shown_ids", e["ids"])
+        counts = collections.OrderedDict()
+        for i in ids:
+            n = ranger_ids.name_of(i)
+            counts[n] = counts.get(n, 0) + 1
+        # 2x when it fits, else the same text at 1x (rather than "X & 1 more")
+        title = species_text(ids, metrics, 236) if ids else "Capture basics"
+        flags = 1 if 2 * text_px(title.encode("latin-1"), metrics) + 1 <= 236 else 0
+        parts = [n if c == 1 else f"{n} \x83{c}" for n, c in counts.items()] or ["Added by the tutorial"]
+        lines, cur = [], ""
+        for p in parts:
+            cand = f"{cur}, {p}" if cur else p
+            if cur and text_px(cand.encode("latin-1"), metrics) > D_VALUE_PX:
+                lines.append(cur + ",")
+                cur = p
+            else:
+                cur = cand
+        lines.append(cur)
+        assert len(lines) <= D_ROWS, lines
+        arena = ARENA_NAME.get(e["arena"], f"Arena {e['arena']}")
+        total = f"{len(ids)} Pok\x82mon" if ids else "Set by the tutorial"
+        strs = [kind, title] + lines + ["", arena, total]
+        for k, s in enumerate(strs):
+            room = 248 - 112 if k == 0 else 240 if k == 1 else D_VALUE_PX   # kind, title, values
+            assert text_px(s.encode("latin-1"), metrics) <= room, s
+        out.append((flags, b"".join(s.encode("latin-1") + b"\0" for s in strs)))
+    return out
+
+
+def styler_lines(metrics):
+    """Top-screen styler line per preset, with the level table's real numbers."""
+    d = PLST_FILE.read_bytes()
+    rs = struct.unpack_from("<I", d, 4)[0]
+    out = []
+    for lv, ep, pp, lp in STYLER_PRESETS:
+        energy, power = struct.unpack_from("<HH", d, 0x10 + rs * lv + 4)
+        energy, power = energy + 5 * ep, power + 5 * pp
+        assert energy <= 255, "max energy is a byte"
+        s = f"Energy {energy}  Power {power}"
+        name = f"Styler Lv.{lv}{'+' if ep or pp or lp else ''}"
+        assert 8 + max(text_px(name.encode("latin-1"), metrics), text_px(s.encode("latin-1"), metrics)) <= 248, s
+        out.append(s.encode("latin-1"))
+    return out
+
+
 def entry_text(i, desc, label):
     """Plain-ASCII list line for capture_select_list.csv."""
     return f"{desc}  [{label}]" if label else desc
@@ -439,7 +543,9 @@ def main():
     labels = menu_labels(blist, metrics)
     assert FADE_FRAMES == 8, "fade code uses level = remaining * 2"
 
-    # sections: start, length, scrollbar multiplier (16.16, 0 = list fits), heading
+    # sections (64 bytes each): start, length, scrollbar multiplier (16.16, 0 = list
+    # fits), its inverse (scrollbar y -> entry, for dragging), the x splitting a tap
+    # on the heading into previous / next section, heading
     starts, keys, prev = [], [], None
     for i, e in enumerate(blist):
         cat = section_of(e)
@@ -452,9 +558,12 @@ def main():
     for s, (st, key) in enumerate(zip(starts, keys)):
         ln = (starts[s + 1] if s + 1 < nsect else n) - st
         mul = 0 if ln <= ROWS else ((TRACK[3] - THUMB_H) << 16) // (ln - 1)
+        inv = 0 if ln <= ROWS else ((ln - 1) << 16) // (TRACK[3] - THUMB_H)
         name = f"\x80 {SECTION_NAMES[key]} \x81".encode("latin-1")
-        assert len(name) < 24
-        sect_bin += struct.pack("<HHI", st, ln, mul) + name.ljust(24, b"\0")
+        assert len(name) < 48
+        mid = 8 + text_px(name, metrics) // 2
+        sect_bin += struct.pack("<HHIIB3x", st, ln, mul, inv, mid) + name.ljust(48, b"\0")
+    assert len(sect_bin) == 64 * nsect
 
     def lerp(a, b, t):
         return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
@@ -467,10 +576,44 @@ def main():
         return data(s.encode("latin-1") + b"\0")
 
     title = "Capture Select"
-    foot = "\x02A\x01 Go  \x02B\x01 Back  \x02L/R\x01 Jump  \x02START\x01 Styler"
-    assert 8 + text_px(foot.encode("latin-1"), metrics) <= 248, "footer too wide"
-    styler_names = [b"Styler Lv.%d" % lv for lv in STYLER_LEVELS]
-    assert all(1 <= lv <= 99 for lv in STYLER_LEVELS) and len(STYLER_LEVELS) <= 8
+    # footer items: (key, label); a tap on one counts as that button (L/R: left / right half)
+    # (START is explained on the top screen; the header's styler is tappable too)
+    foot_items = [("A", "Go", 0x1), ("B", "Back", 0x2), ("L/R", "Jump", 0x300), ("X", "Random", 0x400)]
+    foot, taps, x = "", bytearray(), 8
+    def adv(s):
+        return sum((metrics[glyph_index(c)] & 15) + 1 for c in s.encode("latin-1") if c >= 8)
+    for k, (key, label, bits) in enumerate(foot_items):
+        sep = "  " if k else ""
+        x += adv(sep)
+        item = f"\x02{key}\x01 {label}"
+        x0, x1 = x, x + adv(item) - 1
+        foot += sep + item
+        x = x1 + 1
+        lo, hi = max(0, x0 - 3), min(255, x1 + 3)
+        if bits == 0x300:
+            m = (lo + hi) // 2
+            taps += struct.pack("<BBBBHxx", lo, 175, m, 192 - 1, 0x200)
+            taps += struct.pack("<BBBBHxx", m, 175, hi, 192 - 1, 0x100)
+        else:
+            taps += struct.pack("<BBBBHxx", lo, 175, hi, 192 - 1, bits)
+    assert x - 1 <= 248, f"footer too wide ({x - 1})"
+    taps += struct.pack("<BBBBHxx", 150, 0, 255, 23, 0x8)        # the styler in the header -> START
+    taps += b"\xff" * 8
+    npre = len(STYLER_PRESETS)
+    styler_names = [b"Styler Lv.%d%s" % (lv, b"+" if ep or pp or lp else b"") for lv, ep, pp, lp in STYLER_PRESETS]
+    assert all(1 <= lv <= 99 for lv in STYLER_LEVELS) and npre <= 8
+    assert all(5 * ep + 164 <= 255 and lp <= 15 for _lv, ep, _pp, lp in STYLER_PRESETS)
+    slines = styler_lines(metrics)
+    det = details(blist, labels, metrics)
+    det_blob, det_off = bytearray(), []
+    for flags, b in det:
+        det_off.append(len(det_blob))
+        det_blob += b
+    assert len(det_blob) < 0x10000
+    dx, dy, dw, dh = DPANEL
+    S = dict(details="Battle details", hint="\x02START\x01 Styler   \x02Tap\x01 twice to start",
+             pokemon="Pok\x82mon", arena="Arena", total="Total")
+    assert 8 + text_px(S["hint"].encode("latin-1"), metrics) <= 248
     px, py, pw, ph = PANEL
     tx, ty, tw, th = TRACK
     # gradient margins beside the list panel, stored as whole words (2 px each)
@@ -494,6 +637,11 @@ wrapper:
     mvn  r5, r5
     ldr  r1, =0x3ff
     and  r5, r5, r1
+    ldr  r1, ={XY_BUF:#x}            @ X / Y (bits 10 / 11, 0 = pressed) from the ARM7
+    ldrh r1, [r1]
+    mvn  r1, r1
+    and  r1, r1, #0xc00
+    orr  r5, r5, r1
     ldrh r7, [r6, #4]
     strh r5, [r6, #4]
     bic  r7, r5, r7
@@ -532,6 +680,11 @@ open_menu:
     ldr  r1, =0x04000242
     ldrb r0, [r1]
     strb r0, [r6, #8]
+    ldrb r0, [r1, #1]              @ VRAMCNT_D / _H, restored on exit
+    ldr  r12, =vars
+    strb r0, [r12, #6]
+    ldrb r0, [r1, #6]
+    strb r0, [r12, #7]
     ldrh r0, [r6, #0]
     ldr  r1, ={n}
     cmp  r0, r1
@@ -576,6 +729,8 @@ menu:
     b    nomove
 
 menu_input:
+    bl   touch                       @ a tap counts as a button press, or picks a row itself
+    orr  r7, r7, r0
     tst  r7, #2
     bne  start_close
     tst  r7, #1
@@ -584,12 +739,16 @@ menu_input:
     beq  no_start
     ldrb r0, [r6, #11]
     add  r0, r0, #1
-    cmp  r0, #{len(STYLER_LEVELS)}
+    cmp  r0, #{npre}
     movge r0, #0
     strb r0, [r6, #11]
     mov  r0, #1
     strb r0, [r6, #7]
 no_start:
+    tst  r7, #0x400                  @ X: random battle
+    beq  no_rand
+    bl   random_pick
+no_rand:
     mov  r4, #0
     ldrb r2, [r6, #9]
     tst  r5, #0xc0
@@ -632,22 +791,7 @@ wrap_hi:
     cmp  r0, r1
     subge r0, r0, r1
     bge  wrap_hi
-    ldrh r9, [r6, #2]                @ old top
-    ldr  r12, =vars
-    ldrb r10, [r12, #2]              @ old section
-    strh r0, [r6, #0]
-    bl   fix_top
-    ldrh r0, [r6, #2]
-    ldr  r12, =vars
-    ldrb r1, [r12, #2]
-    cmp  r0, r9
-    moveq r0, #4                     @ same page: just the two rows
-    movne r0, #2                     @ scrolled: the list
-    cmp  r1, r10
-    movne r0, #1                     @ new section: everything (heading)
-    ldrb r2, [r6, #7]
-    orr  r0, r0, r2
-    strb r0, [r6, #7]
+    bl   select
     b    nomove
 sect_next:
     ldr  r12, =vars
@@ -663,7 +807,7 @@ sect_prev:
     movlt r0, #{nsect - 1}
 set_sect:
     ldr  r1, =sections
-    add  r1, r1, r0, lsl #5
+    add  r1, r1, r0, lsl #6
     ldrh r12, [r1]
     strh r12, [r6, #0]
     strh r12, [r6, #2]
@@ -744,20 +888,38 @@ added:
     ldrh r0, [r9, #58]
     cmp  r0, r3
     strhne r0, [r1, #0x40]
-    ldrb r0, [r6, #11]               @ styler preset -> level
-    cmp  r0, #{len(STYLER_LEVELS)}
+    ldrb r0, [r6, #11]               @ styler preset: level, Energy/Power/Line Plus
+    cmp  r0, #{npre}
     movhs r0, #0
-    ldr  r1, =styler_table
-    ldrb r1, [r1, r0]
+    ldr  r9, =styler_table
+    add  r9, r9, r0, lsl #2
+    ldrb r1, [r9]
     strb r1, [r8, #0x74]
+    ldrb r0, [r9, #1]
+    strb r0, [r8, #0x7d]
+    ldrb r0, [r9, #2]
+    strb r0, [r8, #0x7e]
+    ldrb r0, [r9, #3]
+    strb r0, [r8, #0x7f]
+    mov  r0, r0, lsl #4              @ line length 0x1C0 + 16 per Line Plus level
+    add  r0, r0, #0x1c0
+    strh r0, [r8, #0x72]
     ldr  r0, ={LEVEL_TABLE:#x}
     bl   {LEVEL_GET:#x}                @ level record, or 0 if the table isn't loaded
     cmp  r0, #0
     beq  no_styler
-    ldrh r1, [r0, #4]                @ max energy, start full
+    ldrh r1, [r0, #4]                @ max energy (+5 per Energy Plus), start full
+    ldrb r2, [r9, #1]
+    add  r2, r2, r2, lsl #2
+    add  r1, r1, r2
+    cmp  r1, #255
+    movhi r1, #255
     strb r1, [r8, #0x75]
     strb r1, [r8, #0x76]
-    ldrh r1, [r0, #6]                @ power
+    ldrh r1, [r0, #6]                @ power (+5 per Power Plus)
+    ldrb r2, [r9, #2]
+    add  r2, r2, r2, lsl #2
+    add  r1, r1, r2
     strh r1, [r8, #0x70]
 no_styler:
     mov  r0, #1
@@ -772,24 +934,191 @@ restore_vram:
     ldrb r0, [r6, #8]
     ldr  r1, =0x04000242
     strb r0, [r1]
+    ldr  r12, =vars
+    ldrb r0, [r12, #6]
+    strb r0, [r1, #1]                @ VRAMCNT_D
+    ldrb r0, [r12, #7]
+    strb r0, [r1, #6]                @ VRAMCNT_H
     mov  r0, #0
     strb r0, [r6, #6]
     bx   lr
     .ltorg
 
-@ r0 = battle index -> r0 = section number, r1 = its 32-byte record
+@ select(r0 = battle index): highlight it, scroll as needed, mark what to redraw
+select:
+    push {{r4, r5, lr}}
+    ldrh r4, [r6, #2]                @ old top
+    ldr  r12, =vars
+    ldrb r5, [r12, #2]               @ old section
+    strh r0, [r6, #0]
+    bl   fix_top
+    ldrh r0, [r6, #2]
+    ldr  r12, =vars
+    ldrb r1, [r12, #2]
+    cmp  r0, r4
+    moveq r0, #4                     @ same page: just the two rows
+    movne r0, #2                     @ scrolled: the list
+    cmp  r1, r5
+    movne r0, #1                     @ new section: everything (heading)
+    ldrb r2, [r6, #7]
+    orr  r0, r0, r2
+    strb r0, [r6, #7]
+    pop  {{r4, r5, pc}}
+
+@ X: a random battle in the current section (LCG, stirred with VCOUNT)
+random_pick:
+    push {{lr}}
+    ldr  r12, =vars
+    ldr  r0, [r12, #8]
+    ldr  r1, =1664525
+    ldr  r2, =1013904223
+    mla  r3, r0, r1, r2
+    ldr  r1, =0x04000006
+    ldrh r1, [r1]
+    add  r3, r3, r1
+    str  r3, [r12, #8]
+    ldrb r1, [r12, #2]
+    ldr  r2, =sections
+    add  r2, r2, r1, lsl #6
+    ldrh r1, [r2, #2]
+    umull r0, r12, r3, r1            @ r12 = rand * length >> 32
+    ldrh r1, [r2]
+    add  r0, r12, r1
+    bl   select
+    pop  {{pc}}
+
+@ touch -> r0 = the buttons a tap stands for (0 if none). A tap on a row picks it
+@ (on the highlighted row it's A); holding on the scrollbar drags the selection.
+touch:
+    push {{r4, r5, lr}}
+    mov  r0, #0
+    ldr  r1, ={TOUCH:#x}
+    ldrb r2, [r1, #8]                @ newly touched
+    ldrb r3, [r1, #9]                @ held
+    ldrh r4, [r1]                    @ x
+    ldrh r5, [r1, #2]                @ y
+    cmp  r3, #0
+    beq  tc_out
+    cmp  r4, #{tx - 5}
+    blo  tc_tap
+    cmp  r4, #{tx + tw + 5}
+    bhs  tc_tap
+    cmp  r5, #{ty}
+    blo  tc_tap
+    cmp  r5, #{ty + th}
+    bhs  tc_tap
+    ldr  r12, =vars
+    ldrb r1, [r12, #2]
+    ldr  r2, =sections
+    add  r2, r2, r1, lsl #6
+    ldr  r3, [r2, #8]                @ scrollbar y -> entry (16.16); 0 = no scrollbar
+    cmp  r3, #0
+    beq  tc_out
+    subs r1, r5, #{ty + THUMB_H // 2}
+    movmi r1, #0
+    mul  r12, r1, r3
+    mov  r1, r12, lsr #16
+    ldrh r3, [r2, #2]
+    cmp  r1, r3
+    subhs r1, r3, #1
+    ldrh r3, [r2]
+    add  r0, r1, r3
+    ldrh r1, [r6, #0]
+    cmp  r0, r1
+    beq  tc_none
+    bl   select
+tc_none:
+    mov  r0, #0
+    b    tc_out
+tc_tap:
+    cmp  r2, #0
+    beq  tc_out
+    cmp  r5, #{ROW_Y0}
+    blo  tc_bar
+    cmp  r5, #{ROW_Y0 + ROWS * ROW_H}
+    bhs  tc_table
+    cmp  r4, #{px + 1}
+    blo  tc_table
+    cmp  r4, #{tx - 5}
+    bhs  tc_table
+    sub  r1, r5, #{ROW_Y0}
+    ldr  r3, =5462                   @ / 12 (rows are 12 px)
+    mul  r12, r1, r3
+    mov  r1, r12, lsr #16
+    ldrh r3, [r6, #2]
+    add  r0, r3, r1
+    ldr  r12, =vars
+    ldrb r1, [r12, #2]
+    ldr  r2, =sections
+    add  r2, r2, r1, lsl #6
+    ldrh r1, [r2]
+    ldrh r3, [r2, #2]
+    add  r1, r1, r3
+    cmp  r0, r1
+    movhs r0, #0                     @ an empty row below the section's end
+    bhs  tc_out
+    ldrh r1, [r6, #0]
+    cmp  r0, r1
+    moveq r0, #1                     @ the highlighted row again: A
+    beq  tc_out
+    bl   select
+    mov  r0, #0
+    b    tc_out
+tc_bar:                              @ section heading: left half = L, right half = R
+    cmp  r5, #24
+    blo  tc_table
+    cmp  r5, #{ROW_Y0 - 2}
+    bhs  tc_table
+    cmp  r4, #176
+    bhs  tc_table
+    ldr  r12, =vars
+    ldrb r1, [r12, #2]
+    ldr  r2, =sections
+    add  r2, r2, r1, lsl #6
+    ldrb r1, [r2, #12]
+    cmp  r4, r1
+    movlo r0, #0x200
+    movhs r0, #0x100
+    b    tc_out
+tc_table:                            @ footer items and the header's styler
+    ldr  r1, =taps
+tc_loop:
+    ldrb r2, [r1]
+    cmp  r2, #0xff
+    beq  tc_out
+    cmp  r4, r2
+    blo  tc_next
+    ldrb r2, [r1, #2]
+    cmp  r4, r2
+    bhs  tc_next
+    ldrb r2, [r1, #1]
+    cmp  r5, r2
+    blo  tc_next
+    ldrb r2, [r1, #3]
+    cmp  r5, r2
+    bhs  tc_next
+    ldrh r0, [r1, #4]
+    b    tc_out
+tc_next:
+    add  r1, r1, #8
+    b    tc_loop
+tc_out:
+    pop  {{r4, r5, pc}}
+    .ltorg
+
+@ r0 = battle index -> r0 = section number, r1 = its 64-byte record
 find_section:
     ldr  r1, =sections
     mov  r2, #{nsect - 1}
 fs_loop:
-    add  r3, r1, r2, lsl #5
+    add  r3, r1, r2, lsl #6
     ldrh r3, [r3]
     cmp  r3, r0
     bls  fs_done
     subs r2, r2, #1
     bne  fs_loop
 fs_done:
-    add  r1, r1, r2, lsl #5
+    add  r1, r1, r2, lsl #6
     mov  r0, r2
     bx   lr
 
@@ -821,9 +1150,11 @@ fix_top:
     pop  {{r4, r5, pc}}
 
 setup_display:
-    ldr  r0, =0x04000242
-    mov  r1, #0x89
+    ldr  r0, =0x04000242           @ VRAM C -> sub BG 0x06200000 (top-screen details)
+    mov  r1, #0x84
     strb r1, [r0]
+    mov  r1, #0x89                 @ VRAM D -> main BG 0x06020000 (the menu)
+    strb r1, [r0, #1]
     mov  r1, #0
     ldr  r0, =0x0400006c
     strh r1, [r0]
@@ -865,9 +1196,22 @@ no_dual3d:
     str  r1, [r0, #0x3c]
     strh r1, [r0, #0x50]
     strh r1, [r0, #0x6c]
-    ldr  r0, =0x04001000
-    mov  r1, #0x10000
+    ldr  r0, =0x04000248           @ VRAM H also maps to sub BG 0x06200000 on the title:
+    mov  r1, #0                    @ off while the menu is open
+    strb r1, [r0]
+    ldr  r0, =0x04001000           @ sub engine: mode 5, BG3 = 256x192 direct-colour bitmap
+    ldr  r1, =0x00010805
     str  r1, [r0]
+    ldr  r1, =0x4084
+    strh r1, [r0, #0xe]
+    mov  r1, #0x100
+    strh r1, [r0, #0x30]
+    strh r1, [r0, #0x36]
+    mov  r1, #0
+    strh r1, [r0, #0x32]
+    strh r1, [r0, #0x34]
+    str  r1, [r0, #0x38]
+    str  r1, [r0, #0x3c]
     ldr  r0, =0x05000400
     ldr  r1, ={C_SUB_BACKDROP:#x}
     strh r1, [r0]
@@ -878,7 +1222,8 @@ no_dual3d:
 @ 8 px per stmia (the full-repaint hot spot), then words, then a last pixel.
 rect:
     push {{r4-r9, lr}}
-    ldr  r4, ={VRAM:#x}
+    ldr  r4, =vram_base
+    ldr  r4, [r4]
     add  r4, r4, r1, lsl #9
     add  r4, r4, r0, lsl #1
     mov  r5, r12, lsl #16
@@ -961,7 +1306,8 @@ dt_glyph:
     movhi r4, #0
     ldrb r9, [r11, r4]
     add  r4, r10, r4, lsl #3
-    ldr  r5, ={VRAM:#x}
+    ldr  r5, =vram_base
+    ldr  r5, [r5]
     add  r5, r5, r1, lsl #9
     add  r5, r5, r0, lsl #1
     mov  r12, r9, lsr #4
@@ -1087,9 +1433,11 @@ redraw:
     mov  r0, #0
     strb r0, [r6, #7]
     ldr  r12, =vars
+    and  r0, r11, #1
+    strb r0, [r12, #3]               @ full repaint: the top screen too
     ldrb r0, [r12, #2]
     ldr  r1, =sections
-    add  r8, r1, r0, lsl #5          @ r8 = current section record
+    add  r8, r1, r0, lsl #6          @ r8 = current section record
     tst  r11, #1
     beq  rd_partial
     @ sky gradient (one colour per scanline). Rows crossing the list panel only
@@ -1161,7 +1509,7 @@ g_next:
     @ section heading
     mov  r0, #8
     mov  r1, #27
-    add  r2, r8, #8
+    add  r2, r8, #16
     ldr  r3, ={C['C_WHITE']:#x}
     bl   text_s
     @ list panel outline: a 1 px rounded border plus the interior's four
@@ -1235,7 +1583,260 @@ rd_common:
     ldr  r12, =vars
     ldrh r0, [r6, #0]
     strh r0, [r12, #4]
+    ldrb r1, [r12, #3]               @ top screen: on a full repaint or a new selection
+    ldrh r2, [r12, #12]
+    cmp  r1, #0
+    cmpeq r0, r2
+    beq  rd_done
+    strh r0, [r12, #12]
+    mov  r0, r1
+    bl   draw_details
+rd_done:
     pop  {{r4-r11, pc}}
+    .ltorg
+
+@ grad_rows(r0 first y, r1 end y): sky gradient rows, full width
+grad_rows:
+    push {{r4, r5, lr}}
+    mov  r4, r0
+    mov  r5, r1
+gr_loop:
+    cmp  r4, r5
+    popge {{r4, r5, pc}}
+    ldr  r12, =grad
+    add  r12, r12, r4, lsl #1
+    ldrh r12, [r12]
+    mov  r0, #0
+    mov  r1, r4
+    mov  r2, #256
+    mov  r3, #1
+    bl   rect
+    add  r4, r4, #1
+    b    gr_loop
+
+@ r8 -> the byte after the next NUL
+skip_str:
+    ldrb r0, [r8], #1
+    cmp  r0, #0
+    bne  skip_str
+    bx   lr
+
+@ draw_details(r0 = 1 for everything): the top screen. Draws into VRAM C through
+@ vram_base. Static parts (gradient, header, panel outline, styler line, hint)
+@ only on a full repaint; otherwise the header's right side, the title area and
+@ the panel interior are cleared and the battle's strings drawn again.
+draw_details:
+    push {{r4-r11, lr}}
+    mov  r10, r0
+    ldr  r0, =vram_base
+    ldr  r1, ={SUB_VRAM:#x}
+    str  r1, [r0]
+    ldrh r0, [r6, #0]
+    ldr  r9, =battle_table
+    add  r9, r9, r0, lsl #6          @ r9 = battle record
+    ldrh r0, [r9, #60]
+    ldr  r8, =details
+    add  r8, r8, r0                  @ r8 = its strings
+    cmp  r10, #0
+    beq  dd_partial
+    mov  r0, #0
+    mov  r1, #192
+    bl   grad_rows
+    mov  r0, #0
+    mov  r1, #0
+    mov  r2, #256
+    mov  r3, #20
+    ldr  r12, ={C['C_HEADER']:#x}
+    bl   rect
+    mov  r1, #20
+    mov  r3, #2
+    ldr  r12, ={C['C_YELLOW']:#x}
+    bl   rect
+    mov  r1, #22
+    mov  r3, #1
+    ldr  r12, ={C['C_ORANGE']:#x}
+    bl   rect
+    mov  r0, #8
+    mov  r1, #6
+    ldr  r2, =str_details
+    ldr  r3, ={C['C_WHITE']:#x}
+    bl   text_s
+    mov  r0, #{dx}
+    mov  r1, #{dy}
+    mov  r2, #{dw}
+    mov  r3, #{dh}
+    ldr  r12, ={C['C_BORDER']:#x}
+    bl   rrect
+    ldrb r4, [r6, #11]
+    ldr  r2, =styler_names
+    add  r2, r2, r4, lsl #4
+    mov  r0, #8
+    mov  r1, #{D_STYLER_Y}
+    ldr  r3, ={C['C_YELLOW']:#x}
+    bl   text_s
+    ldr  r2, =styler_lines
+    add  r2, r2, r4, lsl #6
+    mov  r0, #8
+    mov  r1, #{D_STYLER_Y + 12}
+    ldr  r3, ={C['C_WHITE']:#x}
+    bl   text_s
+    mov  r0, #8
+    mov  r1, #{D_HINT_Y}
+    ldr  r2, =str_hint
+    ldr  r3, ={C['C_PALE']:#x}
+    bl   text_s
+    b    dd_body
+dd_partial:
+    mov  r0, #112
+    mov  r1, #0
+    mov  r2, #144
+    mov  r3, #20
+    ldr  r12, ={C['C_HEADER']:#x}
+    bl   rect
+    mov  r0, #23
+    mov  r1, #{dy}
+    bl   grad_rows
+dd_body:
+    mov  r0, #{dx + 1}
+    mov  r1, #{dy + 1}
+    mov  r2, #{dw - 2}
+    mov  r3, #{dh - 2}
+    ldr  r12, ={C['C_PANEL']:#x}
+    bl   rrect
+    mov  r0, #12
+    mov  r1, #{D_DIVIDER}
+    mov  r2, #{dw - 12}
+    mov  r3, #1
+    ldr  r12, ={C['C_TRACK']:#x}
+    bl   rect
+    mov  r0, #248                    @ kind, right of the header
+    mov  r1, #6
+    mov  r2, r8
+    ldr  r3, ={C['C_YELLOW']:#x}
+    bl   text_rs
+    bl   skip_str
+    mov  r0, #10                     @ title: 2x unless too wide
+    mov  r2, r8
+    ldr  r3, ={C['C_WHITE']:#x}
+    ldrb r1, [r9, #62]
+    tst  r1, #1
+    beq  dd_small
+    mov  r1, #28
+    bl   text_s2
+    b    dd_titled
+dd_small:
+    mov  r1, #32
+    bl   text_s
+dd_titled:
+    bl   skip_str
+    mov  r0, #{D_LABEL_X}
+    mov  r1, #{D_ROW0}
+    ldr  r2, =str_pokemon
+    ldr  r3, ={C['C_MUTED']:#x}
+    bl   draw_text
+    mov  r0, #{D_LABEL_X}
+    mov  r1, #{D_ARENA_Y}
+    ldr  r2, =str_arena
+    bl   draw_text
+    mov  r0, #{D_LABEL_X}
+    mov  r1, #{D_TOTAL_Y}
+    ldr  r2, =str_total
+    bl   draw_text
+    mov  r11, #{D_ROW0}
+dd_targets:
+    ldrb r0, [r8]
+    cmp  r0, #0
+    beq  dd_targets_done
+    mov  r0, #{D_VALUE_X}
+    mov  r1, r11
+    mov  r2, r8
+    ldr  r3, ={C['C_TEXT']:#x}
+    bl   draw_text
+    bl   skip_str
+    add  r11, r11, #12
+    b    dd_targets
+dd_targets_done:
+    add  r8, r8, #1
+    mov  r0, #{D_VALUE_X}
+    mov  r1, #{D_ARENA_Y}
+    mov  r2, r8
+    ldr  r3, ={C['C_TEXT']:#x}
+    bl   draw_text
+    bl   skip_str
+    mov  r0, #{D_VALUE_X}
+    mov  r1, #{D_TOTAL_Y}
+    mov  r2, r8
+    ldr  r3, ={C['C_TEXT']:#x}
+    bl   draw_text
+    ldr  r0, =vram_base
+    ldr  r1, ={VRAM:#x}
+    str  r1, [r0]
+    pop  {{r4-r11, pc}}
+    .ltorg
+
+@ draw_text2: draw_text at twice the size (no inline colour codes)
+draw_text2:
+    push {{r4-r11, lr}}
+    ldr  r10, =font
+    ldr  r11, =widths
+d2_loop:
+    ldrb r4, [r2], #1
+    cmp  r4, #0
+    beq  d2_end
+    cmp  r4, #8
+    blo  d2_loop
+    sub  r4, r4, #32
+    cmp  r4, #{NGLYPH - 1}
+    movhi r4, #0
+    ldrb r9, [r11, r4]
+    add  r4, r10, r4, lsl #3
+    ldr  r5, =vram_base
+    ldr  r5, [r5]
+    add  r5, r5, r1, lsl #9
+    add  r5, r5, r0, lsl #1
+    mov  r12, r9, lsr #4
+    add  r12, r12, #24
+    and  r9, r9, #15
+    add  r0, r0, r9, lsl #1
+    add  r0, r0, #2
+    mvn  lr, #0
+    mvn  lr, lr, lsr r9
+    mov  r6, #0
+d2_row:
+    ldrb r7, [r4, r6]
+    ands r7, lr, r7, lsl r12
+    beq  d2_rowend
+d2_bit:
+    clz  r8, r7
+    add  r9, r5, r8, lsl #2
+    strh r3, [r9]
+    strh r3, [r9, #2]
+    add  r9, r9, #512
+    strh r3, [r9]
+    strh r3, [r9, #2]
+    mov  r9, #0x80000000
+    bics r7, r7, r9, lsr r8
+    bne  d2_bit
+d2_rowend:
+    add  r5, r5, #1024
+    add  r6, r6, #1
+    cmp  r6, #8
+    blt  d2_row
+    b    d2_loop
+d2_end:
+    pop  {{r4-r11, pc}}
+
+@ 2x text with a 2 px drop shadow
+text_s2:
+    push {{r0-r3, lr}}
+    add  r0, r0, #2
+    add  r1, r1, #2
+    ldr  r3, ={C_SHADOW | FIXED:#x}
+    bl   draw_text2
+    ldm  sp, {{r0-r3}}
+    bl   draw_text2
+    add  sp, sp, #16
+    pop  {{pc}}
     .ltorg
 
 @ draw_row(r7 battle index, r10 = 1 to clear the row first; r6 state, r8 section).
@@ -1368,10 +1969,13 @@ ds_out:
 
     .align 2
 @ menu-only scratch (reset whenever ov28 reloads): +0 fade frames left,
-@ +1 fade action (0 in, 1 close, 2 launch), +2 current section,
-@ +4 u16 index highlighted by the last redraw
+@ +1 fade action (0 in, 1 close, 2 launch), +2 current section, +3 the redraw
+@ is a full one, +4 u16 index highlighted by the last redraw, +6 / +7 saved
+@ VRAMCNT_D / _H, +8 u32 random seed, +12 u16 index on the top screen
 vars:
-    .byte 0, 0, 0, 0, 0, 0, 0, 0
+    .byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+vram_base:
+    .word {VRAM:#x}
 code_colors:
 {data(b"".join(struct.pack("<H", c) for c in CODE_COLORS))}
     .align 2
@@ -1385,7 +1989,25 @@ str_cursor:
 styler_names:
 {data(b"".join(s.ljust(16, b"\0") for s in styler_names))}
 styler_table:
-    .byte {", ".join(str(lv) for lv in STYLER_LEVELS)}
+{data(bytes(v for p in STYLER_PRESETS for v in p))}
+    .align 2
+styler_lines:
+{data(b"".join(l.ljust(64, b"\0") for l in slines))}
+str_details:
+{cstr(S["details"])}
+str_hint:
+{cstr(S["hint"])}
+str_pokemon:
+{cstr(S["pokemon"])}
+str_arena:
+{cstr(S["arena"])}
+str_total:
+{cstr(S["total"])}
+    .align 2
+taps:
+{data(bytes(taps))}
+details:
+{data(bytes(det_blob))}
     .align 2
 sections:
 {data(bytes(sect_bin))}
@@ -1423,6 +2045,7 @@ battle_table:
         for k, rid in enumerate(e["ids"]):
             struct.pack_into("<H", rec, 36 + 2 * k, rid)
         struct.pack_into("<HHBxH", rec, 52, e["v154"], e["v156"], e["s150"], e["v140"])
+        struct.pack_into("<HB", rec, 60, det_off[i], det[i][0])   # top-screen strings, 2x title
         table += rec
     cave_bytes = head + bytes(table)
 

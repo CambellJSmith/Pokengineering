@@ -481,13 +481,18 @@ python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \
 **Title-menu button:** the third title-menu button (selection 2 of `CDemoMenuState`, ov28; handler `0x020D96B8`, formerly *Ranger Net* → scene `0x2B`) now sets the reopen counter (STATE+10), so the wrapper opens the menu ~32 frames later. Its label (message bank 0232 #006) is changed to "Capture Select" by `tools/capture_select/relabel_title_button.sh`, which rebuilds `data/data_localize_us.acf` into the base ROM.
 
 **Controls on the title/demo screen:** SELECT opens the **Capture Select**
-menu on the bottom screen (it fades in; the top screen shows the title's sky
-blue). UP/DOWN move (hold to repeat), LEFT/RIGHT page by one screen (11
+menu on the bottom screen (it fades in; the top screen shows the highlighted
+battle's details). UP/DOWN move (hold to repeat), LEFT/RIGHT page by one screen (11
 rows), **L/R jump to the previous/next section** (Story & Quests → Tutorials
 → Sky Captures → Co-op Captures → Wild Pokémon → Extras; the list only shows
-the current section), **START cycles the styler level** (Lv.1 / Lv.25 /
-Lv.50 / Lv.99, shown in the header), **A** starts the highlighted battle and **B**
-closes the menu (both fade out). The section bar shows the position within
+the current section), **START cycles the styler preset** (Lv.1 / Lv.25 /
+Lv.50 / Lv.99 / Lv.99+ with upgrades, shown in the header), **X jumps to a
+random battle in the section**, **A** starts the highlighted battle and **B**
+closes the menu (both fade out). **Touch:** tap a battle to highlight it and
+tap it again to start it; hold and drag on the scrollbar; tap the left or
+right half of the section heading for the previous/next section; tap the
+header's styler (= START) or a footer item (`A Go`, `B Back`, `L/R Jump`,
+`X Random`). The section bar shows the position within
 the section (`34/189`) and a footer lists the controls. **After a battle the
 menu reopens by itself on the same entry** (about 30 frames after the title
 reloads), so battles can be played back to back.
@@ -511,6 +516,71 @@ highlighted rows (a move within the page), each followed by the counter
 and scrollbar. Holding
 DOWN for 120 frames now advances 27 entries, the full 60 fps repeat rate
 (the 2026-11-18 menu managed 21, the first restyle 18).
+
+**Top screen, touch, random, upgrades (2026-11-19, second round).**
+
+- *Top-screen details.* The top screen shows the highlighted battle: its
+  kind in the header (`Story event`, `Quest 12`, `Capture tutorial 3`,
+  `Sky capture`, `Co-op capture`, `Wild Pokémon`, `Extra`), the species in
+  2× text (1× when it doesn't fit), every target species with its count (up
+  to 4 lines), the arena's look (from the arena catalog below: `Dirt`,
+  `Stone and ruins`, `Sky`…), the number of Pokémon, the styler preset with
+  its real energy and power (read from `2484.PLST` at build time), and a
+  hint line. Tutorials list the Pokémon their script adds. Strings are
+  precomputed per battle (`details` blob, offset in battle record `+60`,
+  2× flag `+62`).
+- *VRAM.* Only bank C can be a sub-engine BG bank big enough for a 256×192
+  direct-colour bitmap (bank D's MST 4 is sub **OBJ**, which is why a first
+  try with D showed nothing). So while the menu is open, C is the top screen
+  (`VRAMCNT_C = 0x84` → sub BG `0x06200000`; sub DISPCNT `0x10805`, BG3CNT
+  `0x4084`) and the menu moved to D (`VRAMCNT_D = 0x89` → main BG
+  `0x06020000`). Bank H (`0x81` on the title) also maps to sub BG
+  `0x06200000`, so it's switched off meanwhile. C, D and H are saved on open
+  and restored on exit. On the title, C and D are both `0x00`.
+- *Input.* X/Y aren't in KEYINPUT. The ARM7 writes them to the shared word
+  `0x027FFFA8` (NitroSDK `HW_BUTTON_XY_BUF`, bit 10 X, bit 11 Y, 0 =
+  pressed), and the wrapper merges them in after `mvn r5, r5` (so the DeSmuME
+  key-injection hook at `0x020EEA20` is unchanged). The game's calibrated touch
+  state is at `0x020AA1A0`: u16 x, u16 y, then u8 newly touched (`+8`), held
+  (`+9`) and released (`+10`). It was found by diffing RAM dumps with the
+  stylus at (40,60) and (200,150) (`DUMP=` / `TOUCH=` in the melonDS driver),
+  and it keeps updating while the title logic is skipped.
+- *Random (X).* A small LCG in `vars` stirred with `VCOUNT`, scaled to the
+  section length with `umull`.
+- *Upgrades.* The game derives the styler from the save's upgrade levels
+  (`+0x40..+0x46` → record `+0x7D..+0x83`: Energy, Power, Line, Defense,
+  Charge, Recovery and Latent Power Plus, names from message bank 231): max
+  energy = level table `+4` + 5 × Energy Plus (ARM9 `0x0205D7A0`), power =
+  `+6` + 5 × Power Plus (`0x0205D804`), line = `0x1C0` + 16 × Line Plus
+  (`0x0205D860`). The **Lv.99+** preset sets those three to `UPGRADE_LEVEL`
+  (10): energy 214, power 377, line `0x260`. The other four stay 0. **The
+  in-game cap per upgrade hasn't been found**, so 10 is a choice, not the
+  game's maximum. Max energy is a byte (`+0x75/+0x76`), so with Lv.99's 164
+  the Energy Plus level can't exceed 18. Serebii's Styler page doesn't give
+  the caps, and the modification screen's code wasn't traced.
+
+Verified in melonDS (the `drv` driver now takes `TOUCH`, `POKE`, `MEM` and
+`DUMP`):
+- A tap picks a row, and a second tap on it starts the battle.
+- Dragging the scrollbar reaches entry 130 of 148.
+- Tapping the header styler advances the preset, and footer taps work
+  (`X Random` → entry 34).
+- The X button picks a random entry.
+- **Lv.99+** launches with level 99, power 377, energy 214/214, line `0x260`
+  and upgrades 10/10/10.
+- One battle per section (indices 0, 148, 152, 170, 300, 763) launches,
+  exits (`EXITCAP`) and reopens on the same entry, with no CPU exception.
+- B still returns to a normal boot and title.
+- Holding DOWN for 120 frames still moves 27 entries.
+
+Profiled cost, as a share of one frame:
+
+| action | cost |
+|---|---|
+| full repaint, both screens (open, L/R, START) | about 80%, spread over two frames (busiest 55%) |
+| move within the page | 23% |
+| page scroll | 40% |
+| X | 24% |
 
 **Menu profile (2026-11-19).** `tools/emu/melonds/build_prof.sh` builds a private
 melonDS core with a per-instruction cycle hook and the `prof` driver (ARM9
@@ -636,7 +706,8 @@ with `tools/emu/batch_battles.py`; screenshots are local only):
 7. `fallback` 13: only `Tutorial 1` (its area matches tutorial 2's).
 
 **Implementation** (`tools/capture_select/build_patch.py`):
-- ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020FBA3C`
+- ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x0210607C`
+  (since the second 2026-11-19 round; it was `0x020FBA3C`)
   (code + strings + gradient/section tables ≈3.6 KB, font 808 B: 96
   `Lat15-VGA8` glyphs + 5 extra, 764 × 64-byte battle records: name[21],
   tag[11], then the battle data). It stays below the heap (`0x0212CFC0`).
@@ -644,12 +715,12 @@ with `tools/emu/batch_battles.py`; screenshots are local only):
   When the menu is closed, the original Update runs unless SELECT is newly
   pressed. While it's open, the title logic is skipped. Every frame the
   wrapper re-asserts engine A (bottom screen) in mode 5 with BG3 as a 256×192
-  direct-colour bitmap in VRAM bank C (`VRAMCNT_C = 0x89` → main BG
-  `0x06020000`; bank C is unused on the title, and the original value is
-  restored on exit), handles input, and redraws only when the selection
-  changes.
+  direct-colour bitmap in VRAM bank D (`VRAMCNT_D = 0x89` → main BG
+  `0x06020000`; until the second 2026-11-19 round this was bank C), and the
+  sub engine (top screen) the same way in bank C (see *Top screen, touch,
+  random, upgrades* above). It handles input and redraws only what changed.
 - A: `CaptureSetup_Clear`, `CaptureSetup_Add3` for each target, BGM `+0x13C`,
-  arena `+0x13E`, return scene `+0x144 = 0x2C`; returns scene `2`.
+  arena `+0x13E`, styler preset, return scene `+0x144 = 0x2C`; returns scene `2`.
 - Menu state is at `CaptureSetup+0x128` (unused tail of player record 3,
   which only multiplayer uses and Clear doesn't touch): `+0` index, `+2` top,
   `+4` previous keys, `+6` open, `+7` dirty, `+8` saved VRAMCNT_C,
@@ -657,8 +728,8 @@ with `tools/emu/batch_battles.py`; screenshots are local only):
   reopens once it reaches 32 title frames), `+11` styler preset. All 8 entry
   slots stay free for targets. Fade frames, fade action and the current
   section are kept in the cave (`vars`), which resets whenever ov28 reloads.
-- While open, the menu also blanks the top screen (sub engine DISPCNT
-  `0x10000`, title-sky-blue backdrop). After a capture, the title runs a transition that
+- While open, the menu draws the battle details on the top screen (sub
+  engine, VRAM C). After a capture, the title runs a transition that
   maps VRAM D to the sub engine and mirrors the bottom screen there.
 - Keystone pitfall: a conditional `bl` to a forward label assembled as a
   branch-to-self (hung the menu). The builder now rejects any self-branch.

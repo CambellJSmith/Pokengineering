@@ -4,8 +4,10 @@
 #   tools/emu/melonds/build.sh            -> work/emu/melonds/drv
 #   work/emu/melonds/drv ROM OUTDIR "frame:keyhex:hold,...;shotframe,..."
 #   env: WATCH=1 (print display regs at shots), TRAP=1 (stop + dump regs on an
-#        exception), EXITCAP=frame (force the capture's exit state)
-# Keys: A 1, B 2, SELECT 4, START 8, RIGHT 10, LEFT 20, UP 40, DOWN 80, R 100, L 200.
+#        exception), EXITCAP=frame (force the capture's exit state),
+#        TOUCH="frame:x:y:hold,..." (stylus), POKE="frame:addr:hexval[:size],...",
+#        MEM="addr:size,..." (print at each shot frame), DUMP="frame,..." (main RAM)
+# Keys: A 1, B 2, SELECT 4, START 8, RIGHT 10, LEFT 20, UP 40, DOWN 80, R 100, L 200, X 400, Y 800.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; ROOT="$HERE/../../.."
 W="$ROOT/work/emu/melonds"; mkdir -p "$W"
