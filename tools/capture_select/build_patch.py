@@ -8,7 +8,7 @@ On the title / demo screen:
     LEFT / RIGHT    page (also L / R)
     A               start the highlighted battle
     B               close the menu (title reloads)
-After a battle the game returns to the title scene (0x2C).
+After a battle (or B) the game returns to the title/demo scene (0x25).
 
 Battles (one menu entry each), built from research/capture/capture_database.csv:
   * every scripted field capture sequence (all its targets and options; label
@@ -63,7 +63,10 @@ ORIG_UPDATE = 0x020D20A4
 VT_SLOT2 = [0x020DCE04 + 8, 0x020DD680 + 8]      # CDemoScene, CGameTitleScene
 SETUP = 0x020B797C
 CLEAR, ADD3 = 0x020418D4, 0x020419D0
-RETURN_SCENE = 0x2C
+MENU_EXIT_SCENE = 0x00   # B / title button: CStartScene (ov0), as at boot, so ov28 reloads fresh
+                         # (re-creating a title scene from inside ov28 leaves stale ov28 state)
+RETURN_SCENE = 0x25   # CDemoScene. Not 0x2C: creating CGameTitleScene directly reads a
+                      # null message string (bank 232 #9) and data-aborts on hardware/melonDS.
 VRAM = 0x06020000
 FONT_FILE = Path("/usr/share/consolefonts/Lat15-VGA8.psf.gz")
 MAX_TARGETS = 8
@@ -481,7 +484,7 @@ no_redraw:
 
 close_menu:
     bl   restore_vram
-    mov  r0, #{RETURN_SCENE:#x}
+    mov  r0, #{MENU_EXIT_SCENE:#x}
     b    ret
 
 launch:
@@ -845,7 +848,7 @@ battle_table:
 # Title menu (CDemoMenuState, ov28): the third button (selection 2) was
 # "Ranger Net" (scene 0x2B; the online service is closed). Its handler at
 # 0x020D96B8 is replaced with: set the reopen counter (STATE+10 = 1) and
-# reload the title scene (next scene = 0x2C, like New Game sets 0x1C), so the
+# reload the title/demo scene (next scene = 0x25, like New Game sets 0x1C), so the
 # fresh title opens the menu ~32 frames later, exactly as after a battle.
 # (Opening it in place left the title's fade-out darkening the screen.) The label is changed in the text archive by
 # play_capture_select.sh / tools/capture_select/relabel_title_button.sh.
@@ -878,7 +881,7 @@ def title_button_patches(ks, at):
         strb  r0, [r1, #10]
         ldr   r0, [r5, #0x1d0]
         cmp   r0, #0
-        movlt r0, #{RETURN_SCENE:#x}
+        movlt r0, #{MENU_EXIT_SCENE:#x}
         strlt r0, [r5, #0x1d0]
         bx    lr
     """, at)
@@ -902,7 +905,7 @@ def skip_browser_patches(ks):
     """Menu battles must not register into the Browser (save data): in the
     CCaptureScene state switch, turn a request for AddBrowser (10) or
     CheckRelease (11) into exit (7) when the capture's return scene
-    (request block 0x020B7AB8 + 8 = CaptureSetup+0x144) is the title (0x2C).
+    (request block 0x020B7AB8 + 8 = CaptureSetup+0x144) is the title/demo scene (RETURN_SCENE).
     Only Capture Select sets that return scene; field captures use 0x1B.
     State numbers were read from the singletons' vptrs in the emulator
     (docs/scene_system.md section 10)."""

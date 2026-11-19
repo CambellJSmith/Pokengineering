@@ -476,6 +476,8 @@ python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \
     --output work/capture_select/capture_select.nds
 ```
 
+**Return scenes (verified in a melonDS core build, which emulates the MPU):** B and the title button go to scene `0x00` (`CStartScene`, as at boot) so ov28 is reloaded; re-creating `0x25`/`0x2C` from inside ov28 reads a null message string (bank 232 #9, via stale ov28 state) and data-aborts on hardware/melonDS (DeSmuME silently reads address 0). Battles return to `0x25` (`CaptureSetup+0x144`). While the menu is open the title's Draw (vtable slot 3) is skipped and its dual-screen 3D flag (`ctx+0x1C8` bit 2) and display capture are turned off.
+
 **Title-menu button:** the third title-menu button (selection 2 of `CDemoMenuState`, ov28; handler `0x020D96B8`, formerly *Ranger Net* → scene `0x2B`) now sets the reopen counter (STATE+10), so the wrapper opens the menu ~32 frames later. Its label (message bank 0232 #006) is changed to "Capture Select" by `tools/capture_select/relabel_title_button.sh`, which rebuilds `data/data_localize_us.acf` into the base ROM.
 
 **Controls on the title/demo screen:** SELECT opens the **Capture Select**
