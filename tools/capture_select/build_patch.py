@@ -611,9 +611,21 @@ wrap_hi:
     cmp  r0, r1
     subge r0, r0, r1
     bge  wrap_hi
+    ldrh r9, [r6, #2]                @ old top
+    ldr  r12, =vars
+    ldrb r10, [r12, #2]              @ old section
     strh r0, [r6, #0]
     bl   fix_top
-    mov  r0, #1
+    ldrh r0, [r6, #2]
+    ldr  r12, =vars
+    ldrb r1, [r12, #2]
+    cmp  r0, r9
+    moveq r0, #4                     @ same page: just the two rows
+    movne r0, #2                     @ scrolled: the list
+    cmp  r1, r10
+    movne r0, #1                     @ new section: everything (heading)
+    ldrb r2, [r6, #7]
+    orr  r0, r0, r2
     strb r0, [r6, #7]
     b    nomove
 sect_next:
@@ -842,13 +854,23 @@ rect:
     ldr  r4, ={VRAM:#x}
     add  r4, r4, r1, lsl #9
     add  r4, r4, r0, lsl #1
+    mov  r5, r12, lsl #16
+    orr  r5, r5, r5, lsr #16         @ colour in both halves: 2 px per store
 rect_row:
-    mov  r5, r4
-    mov  r6, r2
-rect_px:
-    strh r12, [r5], #2
-    subs r6, r6, #1
-    bne  rect_px
+    mov  r6, r4
+    mov  r7, r2
+    tst  r6, #2
+    beq  rect_words
+    strh r12, [r6], #2
+    subs r7, r7, #1
+    beq  rect_next
+rect_words:
+    subs r7, r7, #2
+    strge r5, [r6], #4
+    bgt  rect_words
+    cmn  r7, #1
+    strheq r12, [r6]
+rect_next:
     add  r4, r4, #512
     subs r3, r3, #1
     bne  rect_row
@@ -1007,10 +1029,21 @@ fn10:
     pop  {{r4, pc}}
     .ltorg
 
+@ redraw by dirty level ([r6, #7], cleared here):
+@   bit 0 everything; bit 1 the list (rows, counter, scrollbar);
+@   bit 2 only the previously and currently highlighted rows (+ counter, scrollbar).
+@ Cursor moves within a page use bit 2, so holding UP/DOWN stays at 60 fps.
 redraw:
     push {{r4-r11, lr}}
+    ldrb r11, [r6, #7]
     mov  r0, #0
     strb r0, [r6, #7]
+    ldr  r12, =vars
+    ldrb r0, [r12, #2]
+    ldr  r1, =sections
+    add  r8, r1, r0, lsl #5          @ r8 = current section record
+    tst  r11, #1
+    beq  rd_partial
     @ sky gradient (one colour per scanline)
     ldr  r4, ={VRAM:#x}
     ldr  r5, =grad
@@ -1018,10 +1051,13 @@ redraw:
 g_row:
     ldrh r0, [r5], #2
     orr  r0, r0, r0, lsl #16
-    mov  r1, #128
+    mov  r1, r0
+    mov  r2, r0
+    mov  r3, r0
+    mov  r9, #32
 g_px:
-    str  r0, [r4], #4
-    subs r1, r1, #1
+    stmia r4!, {{r0-r3}}
+    subs r9, r9, #1
     bne  g_px
     subs r7, r7, #1
     bne  g_row
@@ -1056,16 +1092,141 @@ g_px:
     mov  r1, #6
     ldr  r3, ={C['C_YELLOW']:#x}
     bl   text_rs
-    @ section heading and position within the section
-    ldr  r12, =vars
-    ldrb r0, [r12, #2]
-    ldr  r1, =sections
-    add  r8, r1, r0, lsl #5
+    @ section heading
     mov  r0, #8
     mov  r1, #27
     add  r2, r8, #8
     ldr  r3, ={C['C_WHITE']:#x}
     bl   text_s
+    @ list panel outline
+    mov  r0, #{px}
+    mov  r1, #{py}
+    mov  r2, #{pw}
+    mov  r3, #{ph}
+    ldr  r12, ={C['C_BORDER']:#x}
+    bl   rrect
+    mov  r0, #8
+    mov  r1, #180
+    ldr  r2, =str_foot
+    ldr  r3, ={C['C_WHITE']:#x}
+    bl   text_s
+    mov  r11, #2
+rd_partial:
+    tst  r11, #2
+    beq  rd_rows
+    @ the list: panel interior and every visible row
+    mov  r0, #{px + 1}
+    mov  r1, #{py + 1}
+    mov  r2, #{pw - 2}
+    mov  r3, #{ph - 2}
+    ldr  r12, ={C['C_PANEL']:#x}
+    bl   rrect
+    mov  r10, #0
+    ldrh r4, [r6, #2]
+    mov  r5, #0
+rl_loop:
+    cmp  r5, #{ROWS}
+    bge  rd_common
+    add  r7, r4, r5
+    bl   draw_row
+    add  r5, r5, #1
+    b    rl_loop
+rd_rows:
+    mov  r10, #1
+    ldr  r12, =vars
+    ldrh r7, [r12, #4]
+    bl   draw_row
+    ldrh r7, [r6, #0]
+    bl   draw_row
+rd_common:
+    bl   draw_counter
+    bl   draw_scroll
+    ldr  r12, =vars
+    ldrh r0, [r6, #0]
+    strh r0, [r12, #4]
+    pop  {{r4-r11, pc}}
+    .ltorg
+
+@ draw_row(r7 battle index, r10 = 1 to clear the row first; r6 state, r8 section).
+@ Does nothing for an index that isn't on screen.
+draw_row:
+    push {{r4-r11, lr}}
+    ldrh r4, [r6, #2]
+    subs r5, r7, r4
+    bmi  dr_out
+    cmp  r5, #{ROWS}
+    bge  dr_out
+    ldrh r0, [r8]
+    ldrh r1, [r8, #2]
+    add  r0, r0, r1
+    cmp  r7, r0
+    bge  dr_out
+    mov  r11, r5, lsl #2
+    add  r11, r11, r5, lsl #3
+    add  r11, r11, #{ROW_Y0}
+    cmp  r10, #0
+    beq  dr_noclear
+    mov  r0, #8
+    mov  r1, r11
+    mov  r2, #228
+    mov  r3, #{ROW_H}
+    ldr  r12, ={C['C_PANEL']:#x}
+    bl   rect
+dr_noclear:
+    ldrh r0, [r6, #0]
+    cmp  r7, r0
+    bne  dr_text
+    mov  r0, #9
+    mov  r1, r11
+    mov  r2, #226
+    mov  r3, #{ROW_H}
+    ldr  r12, ={C['C_YELLOW']:#x}
+    bl   rrect
+    mov  r0, #10
+    add  r1, r11, #{ROW_H - 1}
+    mov  r2, #224
+    mov  r3, #1
+    ldr  r12, ={C['C_ORANGE']:#x}
+    bl   rect
+    mov  r0, #12
+    add  r1, r11, #2
+    ldr  r2, =str_cursor
+    ldr  r3, ={C['C_ORANGE']:#x}
+    bl   draw_text
+dr_text:
+    ldr  r2, =battle_table
+    add  r2, r2, r7, lsl #6
+    mov  r0, #{NAME_X}
+    add  r1, r11, #2
+    ldr  r3, ={C['C_TEXT']:#x}
+    bl   draw_text
+    ldr  r2, =battle_table
+    add  r2, r2, r7, lsl #6
+    add  r2, r2, #21
+    mov  r0, #{TAG_RIGHT}
+    add  r1, r11, #2
+    ldr  r3, ={C['C_MUTED']:#x}
+    bl   text_r
+dr_out:
+    pop  {{r4-r11, pc}}
+
+@ position within the section ("34/189"), right-aligned on the section bar;
+@ its background is restored from the gradient first
+draw_counter:
+    push {{r4, r5, lr}}
+    ldr  r5, =grad
+    add  r5, r5, #52
+    mov  r4, #26
+dc_clear:
+    ldrh r12, [r5], #2
+    mov  r0, #176
+    mov  r1, r4
+    mov  r2, #80
+    mov  r3, #1
+    bl   rect
+    add  r4, r4, #1
+    cmp  r4, #37
+    blt  dc_clear
     sub  sp, sp, #16
     ldrh r0, [r6, #0]
     ldrh r1, [r8]
@@ -1085,75 +1246,14 @@ g_px:
     ldr  r3, ={C['C_PALE']:#x}
     bl   text_rs
     add  sp, sp, #16
-    @ list panel
-    mov  r0, #{px}
-    mov  r1, #{py}
-    mov  r2, #{pw}
-    mov  r3, #{ph}
-    ldr  r12, ={C['C_BORDER']:#x}
-    bl   rrect
-    mov  r0, #{px + 1}
-    mov  r1, #{py + 1}
-    mov  r2, #{pw - 2}
-    mov  r3, #{ph - 2}
-    ldr  r12, ={C['C_PANEL']:#x}
-    bl   rrect
-    @ rows of the current section
-    ldrh r4, [r6, #2]
-    ldrh r9, [r8]
-    ldrh r10, [r8, #2]
-    add  r10, r9, r10
-    mov  r5, #0
-row_loop:
-    cmp  r5, #{ROWS}
-    bge  rows_done
-    add  r7, r4, r5
-    cmp  r7, r10
-    bge  rows_done
-    mov  r11, r5, lsl #2
-    add  r11, r11, r5, lsl #3
-    add  r11, r11, #{ROW_Y0}
-    ldrh r0, [r6, #0]
-    cmp  r7, r0
-    bne  no_hl
-    mov  r0, #9
-    mov  r1, r11
-    mov  r2, #226
-    mov  r3, #{ROW_H}
-    ldr  r12, ={C['C_YELLOW']:#x}
-    bl   rrect
-    mov  r0, #10
-    add  r1, r11, #{ROW_H - 1}
-    mov  r2, #224
-    mov  r3, #1
-    ldr  r12, ={C['C_ORANGE']:#x}
-    bl   rect
-    mov  r0, #12
-    add  r1, r11, #2
-    ldr  r2, =str_cursor
-    ldr  r3, ={C['C_ORANGE']:#x}
-    bl   draw_text
-no_hl:
-    ldr  r2, =battle_table
-    add  r2, r2, r7, lsl #6
-    mov  r0, #{NAME_X}
-    add  r1, r11, #2
-    ldr  r3, ={C['C_TEXT']:#x}
-    bl   draw_text
-    ldr  r2, =battle_table
-    add  r2, r2, r7, lsl #6
-    add  r2, r2, #21
-    mov  r0, #{TAG_RIGHT}
-    add  r1, r11, #2
-    ldr  r3, ={C['C_MUTED']:#x}
-    bl   text_r
-    add  r5, r5, #1
-    b    row_loop
-rows_done:
-    @ scrollbar (only when the section doesn't fit)
-    ldr  r7, [r8, #4]
-    cmp  r7, #0
-    beq  no_bar
+    pop  {{r4, r5, pc}}
+
+@ scrollbar (only when the section doesn't fit on one screen)
+draw_scroll:
+    push {{r4, r5, lr}}
+    ldr  r4, [r8, #4]
+    cmp  r4, #0
+    beq  ds_out
     mov  r0, #{tx}
     mov  r1, #{ty}
     mov  r2, #{tw}
@@ -1161,8 +1261,9 @@ rows_done:
     ldr  r12, ={C['C_TRACK']:#x}
     bl   rect
     ldrh r0, [r6, #0]
-    sub  r0, r0, r9
-    mul  r1, r0, r7
+    ldrh r5, [r8]
+    sub  r0, r0, r5
+    mul  r1, r0, r4
     mov  r1, r1, lsr #16
     add  r1, r1, #{ty}
     mov  r0, #{tx}
@@ -1170,20 +1271,16 @@ rows_done:
     mov  r3, #{THUMB_H}
     ldr  r12, ={C['C_THUMB']:#x}
     bl   rect
-no_bar:
-    mov  r0, #8
-    mov  r1, #180
-    ldr  r2, =str_foot
-    ldr  r3, ={C['C_WHITE']:#x}
-    bl   text_s
-    pop  {{r4-r11, pc}}
+ds_out:
+    pop  {{r4, r5, pc}}
     .ltorg
 
     .align 2
 @ menu-only scratch (reset whenever ov28 reloads): +0 fade frames left,
-@ +1 fade action (0 in, 1 close, 2 launch), +2 current section
+@ +1 fade action (0 in, 1 close, 2 launch), +2 current section,
+@ +4 u16 index highlighted by the last redraw
 vars:
-    .byte 0, 0, 0, 0
+    .byte 0, 0, 0, 0, 0, 0, 0, 0
 code_colors:
 {data(b"".join(struct.pack("<H", c) for c in CODE_COLORS))}
     .align 2

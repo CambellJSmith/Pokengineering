@@ -504,9 +504,13 @@ the right (`Story`, `Quest 12`, `Tutorial 3`, `Var. 2` for repeated species
 in a section). Map/place names are not shown yet: MPPS byte `+0x1C` looks
 like an area index into message bank 266 (place names) but drifts by a few
 entries in later areas, so the real lookup still needs tracing.
-Fades use `MASTER_BRIGHT` (8 frames). A full redraw takes a little over one
-frame, so on the first frame after opening the menu it is only partly
-drawn (hidden by the fade).
+Fades use `MASTER_BRIGHT` (8 frames). Redraws are tiered by the dirty byte
+(`STATE+7`): bit 0 repaints everything (open, L/R, START), bit 1 only the
+list (the page scrolled), bit 2 only the previously and currently
+highlighted rows (a move within the page), each followed by the counter
+and scrollbar. Fills use word stores (`stmia` for the gradient). Holding
+DOWN for 120 frames now advances 27 entries, the full 60 fps repeat rate
+(the 2026-11-18 menu managed 21, the first restyle 18).
 
 Styler presets write the player record before the battle: level →
 `CaptureSetup+0x6C`, energy → `+0x75/+0x76` (STRONG 25/60, MAX 50/99;
