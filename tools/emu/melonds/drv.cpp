@@ -33,7 +33,9 @@ int main(int argc, char** argv) {
         nds->SetKeyMask(0xFFF & ~pressed);
         if (getenv("EXITCAP") && fr == atoi(getenv("EXITCAP"))) { u32 c = nds->ARM9Read32(0x0211DDE0); printf("force exit ctx=%08x\n", c); nds->ARM9Write32(c + 0x14, 7); }
         nds->RunFrame();
-        if (getenv("TRAP") && nds->ARM9.R[15] >= 0xFFFF0000) {
+        // Stop on a real exception: the CPU is in abort (0x17) or undefined (0x1B) mode.
+        // (Being in BIOS code alone isn't one: IRQ dispatch and SWIs run there too.)
+        if (getenv("TRAP") && ((nds->ARM9.CPSR & 0x1F) == 0x17 || (nds->ARM9.CPSR & 0x1F) == 0x1B)) {
             printf("TRAP f%d pc=%08x lr=%08x cpsr=%08x r0-3 %08x %08x %08x %08x r4-7 %08x %08x %08x %08x\n", fr, nds->ARM9.R[15], nds->ARM9.R[14], nds->ARM9.CPSR,
               nds->ARM9.R[0], nds->ARM9.R[1], nds->ARM9.R[2], nds->ARM9.R[3], nds->ARM9.R[4], nds->ARM9.R[5], nds->ARM9.R[6], nds->ARM9.R[7]);
             for (int b = 0; b < 3; b++) printf(" bank%d abt=%08x und=%08x svc=%08x\n", b, nds->ARM9.R_ABT[b], nds->ARM9.R_UND[b], nds->ARM9.R_SVC[b]);

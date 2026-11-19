@@ -676,6 +676,15 @@ styler (Lv.25 gives `060/060` energy in the capture), fades out on A into a
 normal Pichu capture, reopens on the same entry after a forced exit, and B
 fades out to the boot scene.
 
+**Launch sweep (2026-11-19).** Every one of the 764 entries was launched in
+the melonDS core driver (entry index written to `STATE+0` before SELECT, then
+A). Each capture was forced to exit at frame 1500 (`EXITCAP`), and the menu
+had to reopen on the same entry. Results: all 764 run and return, once the
+Tutorial 1 fix below is in. (Seven entries, Typhlosion co-op, Probopass ×2,
+Palkia ×2, Heatran ×2, looked like crashes only because `drv`'s `TRAP` check
+fired on any BIOS PC, including IRQ dispatch. It now stops only in
+abort/undefined mode.)
+
 **Tutorials (fixed 2026-11-19).** `Tutorial 1` used to data-abort in melonDS
 about 65 frames after launch (ARM9 data abort, `lr = 0x020F9BCC`), with the
 patch on `main` too. Its capture script 1506 is a stub that no story
