@@ -485,8 +485,8 @@ menu on the bottom screen (it fades in; the top screen shows the title's sky
 blue). UP/DOWN move (hold to repeat), LEFT/RIGHT page by one screen (11
 rows), **L/R jump to the previous/next section** (Story & Quests → Tutorials
 → Sky Captures → Co-op Captures → Wild Pokémon → Extras; the list only shows
-the current section), **START cycles the styler preset** (Lv.1 / Lv.25 /
-Lv.50, shown in the header), **A** starts the highlighted battle and **B**
+the current section), **START cycles the styler level** (Lv.1 / Lv.25 /
+Lv.50 / Lv.99, shown in the header), **A** starts the highlighted battle and **B**
 closes the menu (both fade out). The section bar shows the position within
 the section (`34/189`) and a footer lists the controls. **After a battle the
 menu reopens by itself on the same entry** (about 30 frames after the title
@@ -540,10 +540,37 @@ open/move/scroll/page/section/styler scenario are pixel-identical to the
 previous build. The wrapper prologue (GDB hooks `0x020EEA14`/`0x020EEA20`) is
 unchanged.
 
-Styler presets write the player record before the battle: level →
-`CaptureSetup+0x6C`, energy → `+0x75/+0x76` (STRONG 25/60, MAX 50/99;
-NORMAL keeps the Clear defaults 1/10). Verified in the emulator: `+0x75/76 =
-99` shows `099/099` energy; Clear's level 1 matches "Styler Level 01".
+**Styler levels (fixed 2026-11-19).** In the field, `CFieldToCaptureState::Enter`
+(ov2 `0x020DF760`) copies the player's styler from the save object `*0x020BD32C`
+into player record 0 (`CaptureSetup+0x6C`, 0x34 bytes):
+
+| record | from the save | Clear |
+|---|---|---|
+| `+0x6C` u32 | save `+0x34` (XOR-obfuscated, likely EXP) | 1 |
+| `+0x70` u16 **power** | `levelTable[level].+6` + 5 × upgrade[1] | 10 |
+| `+0x72` u16 line length | `0x1C0` + 16 × upgrade[2] | `0x1C0` |
+| `+0x74` u8 **styler level** | save `+0x3C` (XOR) | 1 |
+| `+0x75` / `+0x76` energy | save `+0x3D` / `levelTable[level].+4` + 5 × upgrade[0] | 10 / 10 |
+| `+0x7D`–`+0x83` | save `+0x40`–`+0x46` (7 upgrade levels) | 0 |
+
+The level table is resource wrapper `0x020BD41C` (getter `0x0205F3C4` →
+`0x02022754`): 100 rows of 44 bytes, `+0` EXP, `+4` max energy, `+6` power.
+For example, Lv.1 is 10/10, Lv.25 58/75, Lv.50 104/205 and Lv.99 164/327. It is
+already loaded on the title screen.
+
+The menu's old presets wrote the "level" into `+0x6C` and set only the
+energy, so every preset kept level-1 **power** (10). That made late-game and
+legendary captures very hard. The launch code now writes the level to `+0x74`,
+looks it up with `0x0205F3C4`, and sets power `+0x70` and energy `+0x75/+0x76`
+from the table. Upgrades stay at 0.
+
+Verified in melonDS with touch input (the same continuous loops around a Pichu):
+- **Lv.1:** 11 loops, 5.15 s.
+- **Lv.50:** 1 loop, 1.15 s, `104/104` energy, result screen "Styler Level 50".
+- **Lv.99:** 1 loop with `164/164` energy, then taps through the result screen
+  back to the reopened menu.
+
+The 16 menu screenshots are unchanged.
 
 **Menu entries (764)**, generated from `research/capture/capture_database.csv`
 (full list: `work/capture_select/capture_select_list.csv`):
@@ -672,7 +699,7 @@ Browser screen and a normal title afterwards.
 
 **Verified in melonDS (2026-11-19, `tools/emu/melonds`):** the restyled menu
 opens with a fade, moves, pages, wraps between sections with L/R, cycles the
-styler (Lv.25 gives `060/060` energy in the capture), fades out on A into a
+styler (then Lv.25 gave `060/060` energy; since the styler fix it gives `058/058` and power 75), fades out on A into a
 normal Pichu capture, reopens on the same entry after a forced exit, and B
 fades out to the boot scene.
 

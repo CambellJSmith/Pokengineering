@@ -94,10 +94,14 @@ MANUAL_ARENA_BY_DEX = {485: 40,                  # Heatran -> volcanic red earth
                        151: 17,                  # Mew -> stone ruins
                        386: 48,                  # Deoxys -> sky
                        492: 77}                  # Shaymin -> flower meadow
-# Styler presets (START in the menu): (level -> CaptureSetup+0x6C, energy -> +0x75/+0x76).
-# Verified in the emulator: +0x75/+0x76 = 99 shows "099/099" energy; Clear's +0x6C = 1
-# matches "Styler Level 01" on the result screen. Preset 0 keeps the Clear defaults.
-STYLER_PRESETS = [None, (25, 60), (50, 99)]
+# Styler presets (START in the menu): styler levels. The field copies the player's
+# styler from the save (CFieldToCaptureState::Enter, ov2 0x020DF760): level -> player
+# record +0x74 (CaptureSetup+0x74), power -> +0x70 and max energy -> +0x76 from the
+# level table 0x020BD41C (getter 0x0205F3C4: +4 energy, +6 power; loaded on the title
+# screen), plus 5 per upgrade. The menu does the same lookup at launch, so a preset is a
+# real styler of that level (Lv.50: 104 energy, power 205; Lv.1 keeps Clear's 10/10).
+STYLER_LEVELS = [1, 25, 50, 99]
+LEVEL_TABLE, LEVEL_GET = 0x020BD41C, 0x0205F3C4
 TUTORIAL_CHAPTER = {2: 3, 3: 5, 4: 6, 5: 11, 7: 19}   # tutorial n is first started in chapter C0xx
 # Tutorial 1 (capture script 1506, never started by the story) is a stub: it
 # runs the shared tutorial intro and starts the capture without adding a
@@ -465,7 +469,8 @@ def main():
     title = "Capture Select"
     foot = "\x02A\x01 Go  \x02B\x01 Back  \x02L/R\x01 Jump  \x02START\x01 Styler"
     assert 8 + text_px(foot.encode("latin-1"), metrics) <= 248, "footer too wide"
-    styler_names = [b"Styler Lv.1", b"Styler Lv.%d" % STYLER_PRESETS[1][0], b"Styler Lv.%d" % STYLER_PRESETS[2][0]]
+    styler_names = [b"Styler Lv.%d" % lv for lv in STYLER_LEVELS]
+    assert all(1 <= lv <= 99 for lv in STYLER_LEVELS) and len(STYLER_LEVELS) <= 8
     px, py, pw, ph = PANEL
     tx, ty, tw, th = TRACK
     # gradient margins beside the list panel, stored as whole words (2 px each)
@@ -579,7 +584,7 @@ menu_input:
     beq  no_start
     ldrb r0, [r6, #11]
     add  r0, r0, #1
-    cmp  r0, #3
+    cmp  r0, #{len(STYLER_LEVELS)}
     movge r0, #0
     strb r0, [r6, #11]
     mov  r0, #1
@@ -739,16 +744,21 @@ added:
     ldrh r0, [r9, #58]
     cmp  r0, r3
     strhne r0, [r1, #0x40]
-    ldrb r0, [r6, #11]
+    ldrb r0, [r6, #11]               @ styler preset -> level
+    cmp  r0, #{len(STYLER_LEVELS)}
+    movhs r0, #0
+    ldr  r1, =styler_table
+    ldrb r1, [r1, r0]
+    strb r1, [r8, #0x74]
+    ldr  r0, ={LEVEL_TABLE:#x}
+    bl   {LEVEL_GET:#x}                @ level record, or 0 if the table isn't loaded
     cmp  r0, #0
     beq  no_styler
-    ldr  r1, =styler_table
-    add  r1, r1, r0, lsl #2
-    ldrh r2, [r1]
-    str  r2, [r8, #0x6c]
-    ldrb r2, [r1, #2]
-    strb r2, [r8, #0x75]
-    strb r2, [r8, #0x76]
+    ldrh r1, [r0, #4]                @ max energy, start full
+    strb r1, [r8, #0x75]
+    strb r1, [r8, #0x76]
+    ldrh r1, [r0, #6]                @ power
+    strh r1, [r8, #0x70]
 no_styler:
     mov  r0, #1
     strb r0, [r6, #10]
@@ -1375,12 +1385,8 @@ str_cursor:
 styler_names:
 {data(b"".join(s.ljust(16, b"\0") for s in styler_names))}
 styler_table:
-    .short 0
-    .byte 0, 0
-    .short {STYLER_PRESETS[1][0]}
-    .byte {STYLER_PRESETS[1][1]}, 0
-    .short {STYLER_PRESETS[2][0]}
-    .byte {STYLER_PRESETS[2][1]}, 0
+    .byte {", ".join(str(lv) for lv in STYLER_LEVELS)}
+    .align 2
 sections:
 {data(bytes(sect_bin))}
 grad:
