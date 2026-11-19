@@ -468,6 +468,12 @@ def main():
     styler_names = [b"Styler Lv.1", b"Styler Lv.%d" % STYLER_PRESETS[1][0], b"Styler Lv.%d" % STYLER_PRESETS[2][0]]
     px, py, pw, ph = PANEL
     tx, ty, tw, th = TRACK
+    # gradient margins beside the list panel, stored as whole words (2 px each)
+    g_regs = ["r0", "r1", "r2", "r3", "r10", "r11", "r12", "lr"]
+    margin_l, margin_r = px, 256 - (px + pw)
+    assert margin_l % 2 == 0 and margin_r % 2 == 0 and 2 <= margin_l <= 16 and 2 <= margin_r <= 16
+    G_LEFT = "{" + ", ".join(g_regs[:margin_l // 2]) + "}"
+    G_RIGHT = "{" + ", ".join(g_regs[:margin_r // 2]) + "}"
     C = dict(C_HEADER=C_HEADER, C_YELLOW=C_YELLOW, C_ORANGE=C_ORANGE, C_WHITE=C_WHITE, C_BORDER=C_BORDER,
              C_PANEL=C_PANEL, C_TEXT=C_TEXT, C_MUTED=C_MUTED, C_TRACK=C_TRACK, C_THUMB=C_THUMB, C_PALE=C_PALE)
     asm = f"""
@@ -858,21 +864,32 @@ no_dual3d:
     bx   lr
     .ltorg
 
-@ rect(r0 x, r1 y, r2 w, r3 h, r12 colour)
+@ rect(r0 x, r1 y, r2 w >= 1, r3 h >= 1, r12 colour); keeps r0-r2, r12.
+@ 8 px per stmia (the full-repaint hot spot), then words, then a last pixel.
 rect:
-    push {{r4-r7, lr}}
+    push {{r4-r9, lr}}
     ldr  r4, ={VRAM:#x}
     add  r4, r4, r1, lsl #9
     add  r4, r4, r0, lsl #1
     mov  r5, r12, lsl #16
-    orr  r5, r5, r5, lsr #16         @ colour in both halves: 2 px per store
+    orr  r5, r5, r5, lsr #16         @ colour in both halves: 2 px per word
+    mov  r8, r5
+    mov  r9, r5
+    mov  lr, r5
 rect_row:
     mov  r6, r4
     mov  r7, r2
     tst  r6, #2
-    beq  rect_words
-    strh r12, [r6], #2
-    subs r7, r7, #1
+    strhne r12, [r6], #2
+    subne r7, r7, #1
+    subs r7, r7, #8
+    blt  rect_tail
+rect_8:
+    stmia r6!, {{r5, r8, r9, lr}}
+    subs r7, r7, #8
+    bge  rect_8
+rect_tail:
+    adds r7, r7, #8                  @ 0..7 px left
     beq  rect_next
 rect_words:
     subs r7, r7, #2
@@ -884,17 +901,26 @@ rect_next:
     add  r4, r4, #512
     subs r3, r3, #1
     bne  rect_row
-    pop  {{r4-r7, pc}}
+    pop  {{r4-r9, pc}}
 
-@ rect with the four corner pixels left out
+@ rect with the four corner pixels left out (h >= 3): the body without its
+@ first and last rows, then those two rows 1 px in from each side
 rrect:
     push {{r0-r3, lr}}
-    add  r0, r0, #1
-    sub  r2, r2, #2
-    bl   rect
-    ldm  sp, {{r0-r3}}
     add  r1, r1, #1
     sub  r3, r3, #2
+    bl   rect
+    ldm  sp, {{r0-r3}}
+    add  r0, r0, #1
+    sub  r2, r2, #2
+    mov  r3, #1
+    bl   rect
+    ldm  sp, {{r0-r3}}
+    add  r0, r0, #1
+    sub  r2, r2, #2
+    add  r1, r1, r3
+    sub  r1, r1, #1
+    mov  r3, #1
     bl   rect
     add  sp, sp, #16
     pop  {{pc}}
@@ -929,27 +955,29 @@ dt_glyph:
     add  r5, r5, r1, lsl #9
     add  r5, r5, r0, lsl #1
     mov  r12, r9, lsr #4
+    add  r12, r12, #24               @ glyph row byte -> top of the word, minus its left blank
     and  r9, r9, #15
+    add  r0, r0, r9                  @ advance x now; r9 is free in the row loop
+    add  r0, r0, #1
+    mvn  lr, #0
+    mvn  lr, lr, lsr r9              @ mask: the glyph's width in the top bits
     mov  r6, #0
 dt_row:
     ldrb r7, [r4, r6]
-    mov  r7, r7, lsl r12
-    mov  r8, #0
-dt_bit:
-    cmp  r8, r9, lsl #1
-    bge  dt_rowend
-    tst  r7, #0x80
-    strhne r3, [r5, r8]
-    mov  r7, r7, lsl #1
-    add  r8, r8, #2
-    b    dt_bit
+    ands r7, lr, r7, lsl r12
+    beq  dt_rowend
+dt_bit:                              @ one iteration per set pixel
+    clz  r8, r7
+    mov  r9, r8, lsl #1
+    strh r3, [r5, r9]
+    mov  r9, #0x80000000
+    bics r7, r7, r9, lsr r8
+    bne  dt_bit
 dt_rowend:
     add  r5, r5, #512
     add  r6, r6, #1
     cmp  r6, #8
     blt  dt_row
-    add  r0, r0, r9
-    add  r0, r0, #1
     b    dt_loop
 dt_end:
     pop  {{r4-r11, pc}}
@@ -1054,7 +1082,9 @@ redraw:
     add  r8, r1, r0, lsl #5          @ r8 = current section record
     tst  r11, #1
     beq  rd_partial
-    @ sky gradient (one colour per scanline)
+    @ sky gradient (one colour per scanline). Rows crossing the list panel only
+    @ get the margins left and right of it: the panel border and interior
+    @ (drawn below) cover the rest.
     ldr  r4, ={VRAM:#x}
     ldr  r5, =grad
     mov  r7, #192
@@ -1064,11 +1094,27 @@ g_row:
     mov  r1, r0
     mov  r2, r0
     mov  r3, r0
-    mov  r9, #32
+    mov  r10, r0
+    mov  r11, r0
+    mov  r12, r0
+    mov  lr, r0
+    rsb  r9, r7, #192                @ y
+    cmp  r9, #{py + 1}
+    blo  g_full
+    cmp  r9, #{py + ph - 2}
+    bhi  g_full
+    stmia r4, {G_LEFT}
+    add  r9, r4, #{(px + pw) * 2}
+    stmia r9, {G_RIGHT}
+    add  r4, r4, #512
+    b    g_next
+g_full:
+    mov  r9, #16
 g_px:
-    stmia r4!, {{r0-r3}}
+    stmia r4!, {{r0-r3, r10, r11, r12, lr}}
     subs r9, r9, #1
     bne  g_px
+g_next:
     subs r7, r7, #1
     bne  g_row
     @ header band: navy, logo-yellow and orange rules
@@ -1108,13 +1154,38 @@ g_px:
     add  r2, r8, #8
     ldr  r3, ={C['C_WHITE']:#x}
     bl   text_s
-    @ list panel outline
-    mov  r0, #{px}
-    mov  r1, #{py}
-    mov  r2, #{pw}
-    mov  r3, #{ph}
+    @ list panel outline: a 1 px rounded border plus the interior's four
+    @ corner pixels (the interior rrect below leaves those out), i.e. exactly
+    @ what a filled outline rrect under the interior would leave visible
     ldr  r12, ={C['C_BORDER']:#x}
-    bl   rrect
+    mov  r0, #{px + 1}
+    mov  r1, #{py}
+    mov  r2, #{pw - 2}
+    mov  r3, #1
+    bl   rect
+    mov  r1, #{py + ph - 1}
+    mov  r3, #1
+    bl   rect
+    mov  r0, #{px}
+    mov  r1, #{py + 1}
+    mov  r2, #1
+    mov  r3, #{ph - 2}
+    bl   rect
+    mov  r0, #{px + pw - 1}
+    mov  r3, #{ph - 2}
+    bl   rect
+    mov  r0, #{px + 1}
+    mov  r3, #1
+    bl   rect
+    mov  r0, #{px + pw - 2}
+    mov  r3, #1
+    bl   rect
+    mov  r1, #{py + ph - 2}
+    mov  r3, #1
+    bl   rect
+    mov  r0, #{px + 1}
+    mov  r3, #1
+    bl   rect
     mov  r0, #8
     mov  r1, #180
     ldr  r2, =str_foot

@@ -508,9 +508,37 @@ Fades use `MASTER_BRIGHT` (8 frames). Redraws are tiered by the dirty byte
 (`STATE+7`): bit 0 repaints everything (open, L/R, START), bit 1 only the
 list (the page scrolled), bit 2 only the previously and currently
 highlighted rows (a move within the page), each followed by the counter
-and scrollbar. Fills use word stores (`stmia` for the gradient). Holding
+and scrollbar. Holding
 DOWN for 120 frames now advances 27 entries, the full 60 fps repeat rate
 (the 2026-11-18 menu managed 21, the first restyle 18).
+
+**Menu profile (2026-11-19).** `tools/emu/melonds/build_prof.sh` builds a private
+melonDS core with a per-instruction cycle hook and the `prof` driver (ARM9
+non-halted cycles per frame, split by PC range; `HIST=1` lists hot 64-byte
+blocks). It showed that a full repaint
+cost about 1.5 frames, which dropped a frame on open, L/R and START. Of that,
+72% was `rect`, 17% `draw_text`'s per-bit loop and 10% the gradient. `rrect` drew
+two overlapping rectangles, and the panel's filled outline `rrect` was almost
+entirely painted over by the interior. Changes:
+- `rect` fills 8 px per `stmia`.
+- `rrect` is one body plus its top and bottom rows.
+- The full repaint draws only the 1 px panel border plus the interior's four
+  corner pixels.
+- The gradient skips the panel interior (8-register `stmia` elsewhere).
+- `draw_text` visits only the set pixels of each glyph row (`clz`).
+
+Menu code cost per action, as a share of one frame:
+
+| action | before | after |
+|---|---|---|
+| full repaint (open, L/R, START) | 147–153% | 30–34% |
+| page scroll | 73–76% | 22% |
+| move within the page | 12% | 5% |
+
+The busiest menu frame went from 100% to 41% busy. All 16 screenshots of the
+open/move/scroll/page/section/styler scenario are pixel-identical to the
+previous build. The wrapper prologue (GDB hooks `0x020EEA14`/`0x020EEA20`) is
+unchanged.
 
 Styler presets write the player record before the battle: level →
 `CaptureSetup+0x6C`, energy → `+0x75/+0x76` (STRONG 25/60, MAX 50/99;
