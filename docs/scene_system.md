@@ -481,14 +481,32 @@ python3 tools/patch_code_rom.py work/debug/guardian_signs_debug.nds \
 **Title-menu button:** the third title-menu button (selection 2 of `CDemoMenuState`, ov28; handler `0x020D96B8`, formerly *Ranger Net* → scene `0x2B`) now sets the reopen counter (STATE+10), so the wrapper opens the menu ~32 frames later. Its label (message bank 0232 #006) is changed to "Capture Select" by `tools/capture_select/relabel_title_button.sh`, which rebuilds `data/data_localize_us.acf` into the base ROM.
 
 **Controls on the title/demo screen:** SELECT opens the **Capture Select**
-menu on the bottom screen (the top screen goes navy). UP/DOWN move (hold to
-repeat), LEFT/RIGHT page by 20, **L/R jump to the previous/next section**
-(story & quest events → tutorials → sky → co-op → wild → extra), **START
-cycles the styler preset** (NORMAL / STRONG / MAX, shown in the header),
-**A** starts the highlighted battle and **B** closes the menu. The footer
-shows the position (`156/764`). **After a battle the menu reopens by itself
-on the same entry** (about 30 frames after the title reloads), so battles can
-be played back to back.
+menu on the bottom screen (it fades in; the top screen shows the title's sky
+blue). UP/DOWN move (hold to repeat), LEFT/RIGHT page by one screen (11
+rows), **L/R jump to the previous/next section** (Story & Quests → Tutorials
+→ Sky Captures → Co-op Captures → Wild Pokémon → Extras; the list only shows
+the current section), **START cycles the styler preset** (Lv.1 / Lv.25 /
+Lv.50, shown in the header), **A** starts the highlighted battle and **B**
+closes the menu (both fade out). The section bar shows the position within
+the section (`34/189`) and a footer lists the controls. **After a battle the
+menu reopens by itself on the same entry** (about 30 frames after the title
+reloads), so battles can be played back to back.
+
+**Look (2026-11-19):** styled after the title screen so it reads as part of
+the game rather than a debug overlay. Colours are sampled from the title art
+(sky gradient `#1040B8`→`#4088E4`, navy header with the logo's yellow
+`#FFCF0C` and orange `#D77D1C` rules, cloud-white rounded list panel, yellow
+highlight bar with an orange ▶ cursor, scrollbar). Text is drop-shadowed and
+proportional: `Lat15-VGA8` glyphs trimmed to their used columns, plus extra
+glyphs ◀ ▶ é × ·. Entries show players' names, not script IDs: species on the
+left (`Beldum ×8`, `Buizel & Croagunk`, `Aipom & 2 more`), a muted tag on
+the right (`Story`, `Quest 12`, `Tutorial 3`, `Var. 2` for repeated species
+in a section). Map/place names are not shown yet: MPPS byte `+0x1C` looks
+like an area index into message bank 266 (place names) but drifts by a few
+entries in later areas, so the real lookup still needs tracing.
+Fades use `MASTER_BRIGHT` (8 frames). A full redraw takes a little over one
+frame, so on the first frame after opening the menu it is only partly
+drawn (hidden by the fade).
 
 Styler presets write the player record before the battle: level →
 `CaptureSetup+0x6C`, energy → `+0x75/+0x76` (STRONG 25/60, MAX 50/99;
@@ -557,9 +575,10 @@ with `tools/emu/batch_battles.py`; screenshots are local only):
 7. `fallback` 13: only `Tutorial 1` (its area matches tutorial 2's).
 
 **Implementation** (`tools/capture_select/build_patch.py`):
-- ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020F76AC`
-  (code + strings ≈1.2 KB, 8×8 font 768 B from `Lat15-VGA8`, 532 × 64-byte
-  battle records). It stays below the heap (`0x0212CFC0`).
+- ov28 is grown: BSS materialised, code cave at `0x020EEA00`–`0x020FBA3C`
+  (code + strings + gradient/section tables ≈3.6 KB, font 808 B: 96
+  `Lat15-VGA8` glyphs + 5 extra, 764 × 64-byte battle records: name[21],
+  tag[11], then the battle data). It stays below the heap (`0x0212CFC0`).
 - `Update` (vtable slot 2) of `CDemoScene`/`CGameTitleScene` → wrapper.
   When the menu is closed, the original Update runs unless SELECT is newly
   pressed. While it's open, the title logic is skipped. Every frame the
@@ -575,9 +594,10 @@ with `tools/emu/batch_battles.py`; screenshots are local only):
   `+4` previous keys, `+6` open, `+7` dirty, `+8` saved VRAMCNT_C,
   `+9` key-repeat counter, `+10` reopen counter (set by a launch; the menu
   reopens once it reaches 32 title frames), `+11` styler preset. All 8 entry
-  slots stay free for targets.
+  slots stay free for targets. Fade frames, fade action and the current
+  section are kept in the cave (`vars`), which resets whenever ov28 reloads.
 - While open, the menu also blanks the top screen (sub engine DISPCNT
-  `0x10000`, navy backdrop). After a capture, the title runs a transition that
+  `0x10000`, title-sky-blue backdrop). After a capture, the title runs a transition that
   maps VRAM D to the sub engine and mirrors the bottom screen there.
 - Keystone pitfall: a conditional `bl` to a forward label assembled as a
   branch-to-self (hung the menu). The builder now rejects any self-branch.
@@ -615,6 +635,16 @@ is the title `0x2C`, which only Capture Select sets (field captures use
 to the title. Verified (`test_capture_finish.py` on the patched ROM): Win →
 Result → request AddBrowser (10) → immediately scene `0x2C`, with no
 Browser screen and a normal title afterwards.
+
+**Verified in melonDS (2026-11-19, `tools/emu/melonds`):** the restyled menu
+opens with a fade, moves, pages, wraps between sections with L/R, cycles the
+styler (Lv.25 gives `060/060` energy in the capture), fades out on A into a
+normal Pichu capture, reopens on the same entry after a forced exit, and B
+fades out to the boot scene.
+
+**Known issue:** launching `Tutorial 1` ("Capture basics") data-aborts in
+melonDS during the capture scene (ARM9 abort at `0x020F9BCC`, frame ~1065).
+This already happens with the shipped patch before the 2026-11-19 restyle.
 
 **Not yet verified:** finishing a capture with real (touch) input (result/browser
 states may touch save data); real hardware/flashcarts.

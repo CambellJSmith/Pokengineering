@@ -5,18 +5,21 @@ On the title / demo screen:
     SELECT          open the Capture Select menu
     (or the title menu's "Capture Select" button, which replaces Ranger Net)
     UP / DOWN       move (hold to repeat)
-    LEFT / RIGHT    page (also L / R)
-    A               start the highlighted battle
-    B               close the menu (title reloads)
+    LEFT / RIGHT    page by one screen (11 rows)
+    L / R           previous / next section (Story & Quests, Tutorials, Sky,
+                    Co-op, Wild Pokemon, Extras)
+    START           styler preset (Lv.1 / Lv.25 / Lv.50)
+    A               start the highlighted battle (fades out)
+    B               close the menu (fades out, title reloads)
 After a battle (or B) the game returns to the title/demo scene (0x25).
 
 Battles (one menu entry each), built from research/capture/capture_database.csv:
-  * every scripted field capture sequence (all its targets and options; label
-    shown, e.g. "Sunkern x6 MQ01_EV002_0")
+  * every scripted field capture sequence (all its targets and options;
+    shown as e.g. "Sunkern x6" tagged "Quest 1", or "Raikou" tagged "Story")
   * the 7 capture tutorials (capture scripts 1506-1512)
   * every sky capture: scripted (1C10) and free-flight sky enemies (SPKD)
   * every co-op capture Pokemon (MPCP)
-  * every remaining wild Ranger ID ("WILD <name> <map>")
+  * every remaining wild Ranger ID ("Wild Pokemon" section)
   * EXTRA: every other Ranger ID with capture data but no known trigger
     (e.g. Palkia, Heatran, Giratina), so every species/variant is selectable
 
@@ -27,14 +30,22 @@ Implementation (docs/scene_system.md section 10):
     Open: skip the title logic, keep the bottom-screen engine (A) in mode 5
     with BG3 as a 256x192 direct-colour bitmap in VRAM bank C (mapped to main
     BG at 0x06020000; C is unused on the title), handle input, and redraw
-    with an embedded 8x8 font (Lat15-VGA8 console font) when needed.
+    when needed. The look follows the title screen: sky-blue gradient, navy
+    header with the logo's yellow/orange rules, a cloud-white rounded list
+    panel, yellow highlight bar, drop-shadowed proportional text (Lat15-VGA8
+    glyphs trimmed to their width, plus arrow / e-acute / multiply glyphs),
+    a per-section list with scrollbar, and MASTER_BRIGHT fades.
   * A: CaptureSetup_Clear + CaptureSetup_Add3 per target, BGM (+0x13C),
     arena (+0x13E), return scene (+0x144), restore VRAMCNT_C, return scene 2.
   * Menu state lives at CaptureSetup+0x128 (unused tail of player record 3,
     which only multiplayer uses and Clear doesn't touch), so all 8 entry
     slots are free for targets:
       +0 u16 index  +2 u16 top  +4 u16 previous keys  +6 u8 open  +7 u8 dirty
-      +8 u8 saved VRAMCNT_C  +9 u8 key-repeat counter
+      +8 u8 saved VRAMCNT_C  +9 u8 key-repeat counter  +10 reopen counter
+      +11 styler preset
+    Fade and current-section bytes live in the cave itself (`vars`, reset
+    when ov28 reloads), so the use of player record 3 isn't extended past
+    the bytes already verified.
   * Every option a script sets is copied: targets (up to 8), BGM +0x13C,
     arena +0x13E, flags |= +0x142, +0x140, capture script +0x150 (tutorials),
     +0x154, +0x156.
@@ -71,7 +82,7 @@ VRAM = 0x06020000
 FONT_FILE = Path("/usr/share/consolefonts/Lat15-VGA8.psf.gz")
 MAX_TARGETS = 8
 STATE = 0x020B797C + 0x128   # unused tail of player record 3 (multiplayer only), not touched by Clear
-ROWS = 20
+ROWS = 11                    # list rows on screen (12 px each)
 FALLBACK_ARENA = 13   # verified outdoor arena (sand + grass), used when nothing better is known
 # Manual arena choices (arena catalog: screenshots of all 66 arena IDs from
 # tools/emu/batch_battles.py; docs/scene_system.md section 10):
@@ -94,21 +105,86 @@ OV3_FILE = ROOT / "work/code_analysis/executables/overlays/overlay_003.bin"
 STATE_LOAD = 0x020D05D8          # "ldr r5, [r2, #0x14]" in the CCaptureScene state switch 0x020D05C4
 STATE_LOAD_BYTES = bytes.fromhex("145092e5")   # verified outdoor arena (sand + grass), used when a battle has no map
 
-C_BG = 0x8000 | (12 << 10) | (3 << 5) | 2       # navy
-C_HI = 0x8000 | (0 << 10) | (16 << 5) | 31      # orange
-C_FG = 0xFFFF                                   # white
-C_HEAD = 0x8000 | (31 << 10) | (31 << 5) | 0    # cyan-ish (BGR: r=0,g=31,b=31)
+def rgb(r, g, b):
+    """24-bit colour -> DS direct-colour pixel (BGR555 + opaque bit 15)."""
+    return 0x8000 | (b >> 3) << 10 | (g >> 3) << 5 | r >> 3
+
+
+# Palette sampled from the title screen (sky gradient, clouds, logo yellow/orange),
+# so the menu reads as part of the title rather than a debug console.
+SKY_TOP, SKY_BOTTOM = (16, 64, 184), (64, 136, 228)
+C_HEADER = rgb(12, 40, 120)       # deep navy band
+C_YELLOW = rgb(255, 207, 12)      # "POKEMON" logo yellow: highlight bar, header accents
+C_ORANGE = rgb(215, 125, 28)      # "GUARDIAN SIGNS" orange: cursor, highlight edge
+C_WHITE = rgb(255, 255, 255)
+C_SHADOW = rgb(8, 24, 72)         # text drop shadow (like "Please tap the Touch Screen!")
+C_BORDER = rgb(16, 48, 128)       # list panel outline
+C_PANEL = rgb(236, 242, 255)      # cloud white list panel
+C_TEXT = rgb(20, 36, 84)          # list text
+C_MUTED = rgb(96, 116, 168)       # list tags
+C_TRACK = rgb(196, 212, 244)      # scrollbar track
+C_THUMB = rgb(40, 96, 208)        # scrollbar thumb
+C_PALE = rgb(200, 220, 255)       # counter
+C_SUB_BACKDROP = rgb(20, 77, 207)  # top screen while the menu is open (title sky blue)
+FIXED = 0x10000                   # draw_text colour flag: ignore inline colour codes
+CODE_COLORS = [C_WHITE, C_YELLOW, C_TEXT, C_MUTED]   # inline codes \x01..\x04
+
+# Layout (pixels, bottom screen 256x192)
+PANEL = (6, 38, 244, 136)         # list panel x, y, w, h (outline; inside is 1 px in)
+ROW_Y0, ROW_H = 41, 12
+TRACK = (237, 41, 4, 130)         # scrollbar x, y, w, h
+THUMB_H = 16
+NAME_X, TAG_RIGHT, NAME_MAX_PX = 22, 230, 160
+FADE_FRAMES = 8                   # fade in on open, fade out on B / A (MASTER_BRIGHT)
+
+# Extra glyphs after ASCII 32..127 (8x8, bit 7 = leftmost column)
+EXTRA_GLYPHS = {
+    0x80: [0x04, 0x0C, 0x1C, 0x3C, 0x1C, 0x0C, 0x04, 0x00],   # left arrow
+    0x81: [0x20, 0x30, 0x38, 0x3C, 0x38, 0x30, 0x20, 0x00],   # right arrow
+    0x82: [0x18, 0x30, 0x78, 0xCC, 0xFC, 0xC0, 0x78, 0x00],   # e acute (Pokemon)
+    0x83: [0x00, 0x00, 0x66, 0x3C, 0x18, 0x3C, 0x66, 0x00],   # multiplication sign
+    0x84: [0x00, 0x00, 0x00, 0x18, 0x18, 0x00, 0x00, 0x00],   # middle dot
+}
+NGLYPH = 96 + len(EXTRA_GLYPHS)
 
 
 def font_bytes() -> bytes:
+    """ASCII 32..127 (Lat15-VGA8) followed by EXTRA_GLYPHS (codes 0x80..)."""
     vendored = Path(__file__).with_name("font8x8.bin")   # ASCII 32..127 from Lat15-VGA8
     if vendored.exists():
-        return vendored.read_bytes()
-    d = gzip.open(FONT_FILE).read()
-    if d[:2] != b"\x36\x04" or d[3] != 8:
-        raise SystemExit("expected an 8x8 PSF1 font")
-    glyphs = d[4:4 + 256 * 8]
-    return glyphs[32 * 8:128 * 8]        # ASCII 32..127
+        base = vendored.read_bytes()
+    else:
+        d = gzip.open(FONT_FILE).read()
+        if d[:2] != b"\x36\x04" or d[3] != 8:
+            raise SystemExit("expected an 8x8 PSF1 font")
+        base = d[4 + 32 * 8:4 + 128 * 8]   # ASCII 32..127
+    assert sorted(EXTRA_GLYPHS) == list(range(0x80, 0x80 + len(EXTRA_GLYPHS)))
+    return base + b"".join(bytes(EXTRA_GLYPHS[c]) for c in sorted(EXTRA_GLYPHS))
+
+
+def glyph_metrics(font: bytes) -> bytes:
+    """Per glyph: (leading empty columns << 4) | width, for proportional text."""
+    out = bytearray()
+    for g in range(NGLYPH):
+        cols = 0
+        for row in font[g * 8:g * 8 + 8]:
+            cols |= row
+        if g == 0 or not cols:              # space (and blank glyphs): 3 px
+            out.append(3)
+            continue
+        used = [c for c in range(8) if cols & (0x80 >> c)]
+        out.append(used[0] << 4 | (used[-1] - used[0] + 1))
+    return bytes(out)
+
+
+def glyph_index(ch: int) -> int:
+    return ch - 32 if 32 <= ch < 128 else (96 + ch - 0x80 if 0x80 <= ch < 0x80 + len(EXTRA_GLYPHS) else 0)
+
+
+def text_px(s: bytes, metrics: bytes) -> int:
+    """Pixel width of a menu string as draw_text renders it (codes < 8 take no space)."""
+    w = sum((metrics[glyph_index(c)] & 15) + 1 for c in s if c >= 8)
+    return max(0, w - 1)
 
 
 def map_arenas():
@@ -276,10 +352,61 @@ def describe(ids):
     return "+".join(names)
 
 
+# Section headings shown above the list (L/R jumps between them)
+SECTION_NAMES = {"event": "Story & Quests", "tutorial": "Tutorials", "SKY": "Sky Captures",
+                 "CO-OP": "Co-op Captures", "WILD": "Wild Pok\x82mon", "EXTRA": "Extras"}
+
+
+def species_text(ids, metrics, max_px=None):
+    """Player-facing target list: "Beldum ×8", "Buizel & Croagunk", "Aipom & 2 more"."""
+    counts = collections.OrderedDict()
+    for i in ids:
+        n = ranger_ids.name_of(i)
+        counts[n] = counts.get(n, 0) + 1
+    parts = [n if c == 1 else f"{n} \x83{c}" for n, c in counts.items()]
+    for s in (" & ".join(parts) if len(parts) <= 2 else None,
+              " & ".join(counts) if len(parts) == 2 else None,          # drop the counts
+              f"{parts[0]} & {len(parts) - 1} more" if len(parts) > 1 else parts[0] if parts else None):
+        if s and len(s) < 21 and text_px(s.encode("latin-1"), metrics) <= (max_px or NAME_MAX_PX):
+            return s
+    return parts[0]
+
+
+def menu_labels(blist, metrics):
+    """(name, tag) per entry: species on the left, the kind of battle as a muted
+    tag on the right (Story / Quest 12 / Tutorial 3), "Var. n" for repeats
+    of the same species within a section. No script IDs or map codes."""
+    out = []
+    for e in blist:
+        sec = section_of(e)
+        lab = e["label"]
+        if sec == "tutorial":
+            n = e["desc"].split(":")[0].split()[-1]
+            m = re.match(r"Tutorial \d+: (.*)", e["desc"])
+            name = m.group(1).replace(" x", " \x83") if m else "Capture basics"
+            tag = f"Tutorial {n}"
+        else:
+            tag = ""
+            if sec == "event":
+                q = re.match(r"MQ(\d+)", lab)
+                tag = f"Quest {int(q.group(1))}" if q else "Story" if re.match(r"C\d", lab) else "Event"
+            room = TAG_RIGHT - NAME_X - 6 - (text_px(tag.encode("latin-1"), metrics) if tag else 0)
+            name = species_text(e["ids"], metrics, min(NAME_MAX_PX, room))
+        out.append([name, tag, sec])
+    # number repeats of the same name within a section (WILD Delibird, EXTRA variants)
+    seen = collections.Counter((s, n) for n, _t, s in out)
+    k = collections.Counter()
+    for row in out:
+        name, tag, sec = row
+        if not tag and seen[(sec, name)] > 1:
+            k[(sec, name)] += 1
+            row[1] = f"Var. {k[(sec, name)]}"
+    return [(n, t) for n, t, _s in out]
+
+
 def entry_text(i, desc, label):
-    s = f"{i + 1:03d} {desc} {label}".rstrip()
-    s = re.sub(r"[^\x20-\x7e]", "?", s)
-    return s[:31]
+    """Plain-ASCII list line for capture_select_list.csv."""
+    return f"{desc}  [{label}]" if label else desc
 
 
 def main():
@@ -293,14 +420,46 @@ def main():
 
     blist = battles()
     n = len(blist)
-    starts, prev = [], None
+    fnt = font_bytes()
+    metrics = glyph_metrics(fnt)
+    labels = menu_labels(blist, metrics)
+    assert FADE_FRAMES == 8, "fade code uses level = remaining * 2"
+
+    # sections: start, length, scrollbar multiplier (16.16, 0 = list fits), heading
+    starts, keys, prev = [], [], None
     for i, e in enumerate(blist):
         cat = section_of(e)
         if cat != prev:
             starts.append(i)
+            keys.append(cat)
             prev = cat
     nsect = len(starts)
-    sections_asm = "\n".join(f"    .short {x}" for x in starts)
+    sect_bin = bytearray()
+    for s, (st, key) in enumerate(zip(starts, keys)):
+        ln = (starts[s + 1] if s + 1 < nsect else n) - st
+        mul = 0 if ln <= ROWS else ((TRACK[3] - THUMB_H) << 16) // (ln - 1)
+        name = f"\x80 {SECTION_NAMES[key]} \x81".encode("latin-1")
+        assert len(name) < 24
+        sect_bin += struct.pack("<HHI", st, ln, mul) + name.ljust(24, b"\0")
+
+    def lerp(a, b, t):
+        return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
+    grad = b"".join(struct.pack("<H", rgb(*lerp(SKY_TOP, SKY_BOTTOM, y / 191))) for y in range(192))
+
+    def data(b: bytes) -> str:
+        return "\n".join("    .byte " + ", ".join(str(x) for x in b[i:i + 32]) for i in range(0, len(b), 32))
+
+    def cstr(s: str) -> str:
+        return data(s.encode("latin-1") + b"\0")
+
+    title = "Capture Select"
+    foot = "\x02A\x01 Go  \x02B\x01 Back  \x02L/R\x01 Jump  \x02START\x01 Styler"
+    assert 8 + text_px(foot.encode("latin-1"), metrics) <= 248, "footer too wide"
+    styler_names = [b"Styler Lv.1", b"Styler Lv.%d" % STYLER_PRESETS[1][0], b"Styler Lv.%d" % STYLER_PRESETS[2][0]]
+    px, py, pw, ph = PANEL
+    tx, ty, tw, th = TRACK
+    C = dict(C_HEADER=C_HEADER, C_YELLOW=C_YELLOW, C_ORANGE=C_ORANGE, C_WHITE=C_WHITE, C_BORDER=C_BORDER,
+             C_PANEL=C_PANEL, C_TEXT=C_TEXT, C_MUTED=C_MUTED, C_TRACK=C_TRACK, C_THUMB=C_THUMB, C_PALE=C_PALE)
     asm = f"""
 wrapper:
     push {{r4-r11, lr}}
@@ -340,11 +499,15 @@ no_reopen:
 open_menu:
     mov  r0, #0
     strb r0, [r6, #10]
+    strb r0, [r6, #9]
+    ldr  r12, =vars
+    strb r0, [r12, #1]
     mov  r0, #1
     strb r0, [r6, #6]
     strb r0, [r6, #7]
-    mov  r0, #0
-    strb r0, [r6, #9]
+    mov  r0, #{FADE_FRAMES}
+    ldr  r12, =vars
+    strb r0, [r12, #0]
     ldr  r1, =0x04000242
     ldrb r0, [r1]
     strb r0, [r6, #8]
@@ -353,24 +516,49 @@ open_menu:
     cmp  r0, r1
     movhs r0, #0
     strh r0, [r6, #0]
-    ldrh r1, [r6, #2]
-    cmp  r0, r1
-    movlo r1, r0
-    add  r2, r1, #{ROWS}
-    cmp  r0, r2
-    subhs r1, r0, #{ROWS - 1}
-    strh r1, [r6, #2]
+    bl   fix_top
     bl   setup_display
     bl   redraw
+    ldr  r0, =0x8010               @ start black, fade in
+    ldr  r1, =0x0400006c
+    strh r0, [r1]
+    ldr  r1, =0x0400106c
+    strh r0, [r1]
     mvn  r0, #1
     b    ret
 
 menu:
     bl   setup_display
+    ldr  r12, =vars
+    ldrb r0, [r12, #0]             @ fade frames left
+    cmp  r0, #0
+    beq  menu_input
+    sub  r0, r0, #1
+    ldr  r12, =vars
+    strb r0, [r12, #0]
+    ldr  r12, =vars
+    ldrb r1, [r12, #1]             @ 0 fade in, 1 fade out + close, 2 fade out + launch
+    mov  r2, r0, lsl #1
+    cmp  r1, #0
+    rsbne r2, r2, #16
+    orr  r2, r2, #0x8000           @ MASTER_BRIGHT: darken by r2/16
+    ldr  r3, =0x0400006c
+    strh r2, [r3]
+    ldr  r3, =0x0400106c
+    strh r2, [r3]
+    cmp  r0, #0
+    bne  nomove
+    cmp  r1, #1
+    beq  close_menu
+    cmp  r1, #2
+    beq  launch
+    b    nomove
+
+menu_input:
     tst  r7, #2
-    bne  close_menu
+    bne  start_close
     tst  r7, #1
-    bne  launch
+    bne  start_launch
     tst  r7, #8
     beq  no_start
     ldrb r0, [r6, #11]
@@ -424,53 +612,29 @@ wrap_hi:
     subge r0, r0, r1
     bge  wrap_hi
     strh r0, [r6, #0]
-    ldrh r1, [r6, #2]
-    cmp  r0, r1
-    movlt r1, r0
-    add  r2, r1, #{ROWS}
-    cmp  r0, r2
-    subge r1, r0, #{ROWS - 1}
-    strh r1, [r6, #2]
+    bl   fix_top
     mov  r0, #1
     strb r0, [r6, #7]
     b    nomove
 sect_next:
-    ldrh r0, [r6, #0]
-    ldr  r1, =sections
-    ldr  r2, ={{nsect}}
-    mov  r3, #0
-sn_loop:
-    cmp  r3, r2
-    bge  sn_wrap
-    add  r12, r1, r3, lsl #1
-    ldrh r12, [r12]
-    cmp  r12, r0
-    bgt  set_idx
-    add  r3, r3, #1
-    b    sn_loop
-sn_wrap:
-    ldrh r12, [r1]
-    b    set_idx
+    ldr  r12, =vars
+    ldrb r0, [r12, #2]
+    add  r0, r0, #1
+    cmp  r0, #{nsect}
+    movge r0, #0
+    b    set_sect
 sect_prev:
-    ldrh r0, [r6, #0]
+    ldr  r12, =vars
+    ldrb r0, [r12, #2]
+    subs r0, r0, #1
+    movlt r0, #{nsect - 1}
+set_sect:
     ldr  r1, =sections
-    ldr  r2, ={{nsect}}
-    sub  r3, r2, #1
-sp_loop:
-    cmp  r3, #0
-    blt  sp_wrap
-    add  r12, r1, r3, lsl #1
-    ldrh r12, [r12]
-    cmp  r12, r0
-    blt  set_idx
-    sub  r3, r3, #1
-    b    sp_loop
-sp_wrap:
-    add  r12, r1, r2, lsl #1
-    ldrh r12, [r12, #-2]
-set_idx:
+    add  r1, r1, r0, lsl #5
+    ldrh r12, [r1]
     strh r12, [r6, #0]
     strh r12, [r6, #2]
+    bl   fix_top
     mov  r0, #1
     strb r0, [r6, #7]
 nomove:
@@ -481,6 +645,19 @@ nomove:
 no_redraw:
     mvn  r0, #1
     b    ret
+
+start_close:
+    mov  r1, #1
+    b    start_fade
+start_launch:
+    mov  r1, #2
+start_fade:
+    ldr  r12, =vars
+    strb r1, [r12, #1]
+    mov  r0, #{FADE_FRAMES}
+    ldr  r12, =vars
+    strb r0, [r12, #0]
+    b    nomove
 
 close_menu:
     bl   restore_vram
@@ -560,6 +737,50 @@ restore_vram:
     mov  r0, #0
     strb r0, [r6, #6]
     bx   lr
+    .ltorg
+
+@ r0 = battle index -> r0 = section number, r1 = its 32-byte record
+find_section:
+    ldr  r1, =sections
+    mov  r2, #{nsect - 1}
+fs_loop:
+    add  r3, r1, r2, lsl #5
+    ldrh r3, [r3]
+    cmp  r3, r0
+    bls  fs_done
+    subs r2, r2, #1
+    bne  fs_loop
+fs_done:
+    add  r1, r1, r2, lsl #5
+    mov  r0, r2
+    bx   lr
+
+@ keep the selection visible; the list only shows the current section
+fix_top:
+    push {{r4, r5, lr}}
+    ldrh r4, [r6, #0]
+    mov  r0, r4
+    bl   find_section
+    ldr  r12, =vars
+    strb r0, [r12, #2]
+    ldrh r2, [r1]
+    ldrh r3, [r1, #2]
+    add  r3, r2, r3
+    ldrh r5, [r6, #2]
+    cmp  r5, r2
+    movlo r5, r2
+    cmp  r4, r5
+    movlo r5, r4
+    add  r0, r5, #{ROWS}
+    cmp  r4, r0
+    subhs r5, r4, #{ROWS - 1}
+    add  r0, r5, #{ROWS}
+    cmp  r0, r3
+    subhi r5, r3, #{ROWS}
+    cmp  r5, r2
+    movlt r5, r2
+    strh r5, [r6, #2]
+    pop  {{r4, r5, pc}}
 
 setup_display:
     ldr  r0, =0x04000242
@@ -610,169 +831,371 @@ no_dual3d:
     mov  r1, #0x10000
     str  r1, [r0]
     ldr  r0, =0x05000400
-    ldr  r1, ={C_BG:#x}
+    ldr  r1, ={C_SUB_BACKDROP:#x}
     strh r1, [r0]
     bx   lr
+    .ltorg
 
-fill_rows:
-    ldr  r3, ={VRAM:#x}
-    add  r3, r3, r0, lsl #12
-    mov  r1, r1, lsl #10
-fr_loop:
-    str  r2, [r3], #4
-    subs r1, r1, #1
-    bne  fr_loop
-    bx   lr
+@ rect(r0 x, r1 y, r2 w, r3 h, r12 colour)
+rect:
+    push {{r4-r7, lr}}
+    ldr  r4, ={VRAM:#x}
+    add  r4, r4, r1, lsl #9
+    add  r4, r4, r0, lsl #1
+rect_row:
+    mov  r5, r4
+    mov  r6, r2
+rect_px:
+    strh r12, [r5], #2
+    subs r6, r6, #1
+    bne  rect_px
+    add  r4, r4, #512
+    subs r3, r3, #1
+    bne  rect_row
+    pop  {{r4-r7, pc}}
 
-redraw:
-    push {{r4-r11, lr}}
-    mov  r0, #0
-    strb r0, [r6, #7]
-    mov  r0, #0
-    mov  r1, #24
-    ldr  r2, ={C_BG | (C_BG << 16):#x}
-    bl   fill_rows
-    mov  r0, #0
-    mov  r1, #0
-    ldr  r2, =str_title
-    ldr  r3, ={C_HEAD:#x}
-    ldr  r12, ={C_BG:#x}
-    bl   draw_text
-    mov  r0, #23
-    mov  r1, #0
-    ldr  r2, =styler_names
-    ldrb r3, [r6, #11]
-    add  r2, r2, r3, lsl #3
-    ldr  r3, ={C_FG:#x}
-    ldr  r12, ={C_BG:#x}
-    bl   draw_text
-    mov  r0, #0
-    mov  r1, #23
-    ldr  r2, =str_foot
-    ldr  r3, ={C_HEAD:#x}
-    ldr  r12, ={C_BG:#x}
-    bl   draw_text
-    sub  sp, sp, #16
-    ldrh r0, [r6, #0]
+@ rect with the four corner pixels left out
+rrect:
+    push {{r0-r3, lr}}
     add  r0, r0, #1
-    mov  r1, sp
-    bl   fmt3
-    mov  r0, #0x2f
-    strb r0, [r1], #1
-    ldr  r0, ={n}
-    bl   fmt3
-    mov  r0, #0
-    strb r0, [r1]
-    mov  r0, #25
-    mov  r1, #23
-    mov  r2, sp
-    ldr  r3, ={C_FG:#x}
-    ldr  r12, ={C_BG:#x}
-    bl   draw_text
+    sub  r2, r2, #2
+    bl   rect
+    ldm  sp, {{r0-r3}}
+    add  r1, r1, #1
+    sub  r3, r3, #2
+    bl   rect
     add  sp, sp, #16
-    ldrh r4, [r6, #2]
-    mov  r5, #0
-row_loop:
-    cmp  r5, #{ROWS}
-    bge  rows_done
-    add  r7, r4, r5
-    ldr  r8, ={n}
-    cmp  r7, r8
-    bge  rows_done
-    ldrh r9, [r6, #0]
-    ldr  r10, ={C_BG:#x}
-    cmp  r7, r9
-    bne  no_hl
-    ldr  r10, ={C_HI:#x}
-    add  r0, r5, #2
-    mov  r1, #1
-    orr  r2, r10, r10, lsl #16
-    bl   fill_rows
-no_hl:
-    mov  r0, #0
-    add  r1, r5, #2
-    ldr  r2, =battle_table
-    add  r2, r2, r7, lsl #6
-    ldr  r3, ={C_FG:#x}
-    mov  r12, r10
-    bl   draw_text
-    add  r5, r5, #1
-    b    row_loop
-rows_done:
-    pop  {{r4-r11, pc}}
+    pop  {{pc}}
 
-fmt3:
-    mov  r2, #0x30
-f100:
-    cmp  r0, #100
-    subge r0, r0, #100
-    addge r2, r2, #1
-    bge  f100
-    strb r2, [r1], #1
-    mov  r2, #0x30
-f10:
-    cmp  r0, #10
-    subge r0, r0, #10
-    addge r2, r2, #1
-    bge  f10
-    strb r2, [r1], #1
-    add  r2, r0, #0x30
-    strb r2, [r1], #1
-    bx   lr
-
+@ draw_text(r0 x, r1 y, r2 string, r3 colour) -> r0 = end x.
+@ Proportional, transparent. Bytes 1..4 switch colour (code_colors) unless
+@ r3 has bit 16 set (used for the drop shadow pass).
 draw_text:
     push {{r4-r11, lr}}
-    mov  r11, r12
     ldr  r10, =font
+    ldr  r11, =widths
 dt_loop:
-    cmp  r0, #32
-    bge  dt_end
     ldrb r4, [r2], #1
     cmp  r4, #0
     beq  dt_end
+    cmp  r4, #8
+    bhs  dt_glyph
+    tst  r3, #0x10000
+    bne  dt_loop
+    ldr  r5, =code_colors
+    sub  r4, r4, #1
+    add  r5, r5, r4, lsl #1
+    ldrh r3, [r5]
+    b    dt_loop
+dt_glyph:
     sub  r4, r4, #32
-    cmp  r4, #95
+    cmp  r4, #{NGLYPH - 1}
     movhi r4, #0
+    ldrb r9, [r11, r4]
     add  r4, r10, r4, lsl #3
     ldr  r5, ={VRAM:#x}
-    add  r5, r5, r1, lsl #12
-    add  r5, r5, r0, lsl #4
+    add  r5, r5, r1, lsl #9
+    add  r5, r5, r0, lsl #1
+    mov  r12, r9, lsr #4
+    and  r9, r9, #15
     mov  r6, #0
-glyph_row:
+dt_row:
     ldrb r7, [r4, r6]
+    mov  r7, r7, lsl r12
     mov  r8, #0
-glyph_bit:
+dt_bit:
+    cmp  r8, r9, lsl #1
+    bge  dt_rowend
     tst  r7, #0x80
-    movne r9, r3
-    moveq r9, r11
-    strh r9, [r5, r8]
+    strhne r3, [r5, r8]
     mov  r7, r7, lsl #1
     add  r8, r8, #2
-    cmp  r8, #16
-    blt  glyph_bit
+    b    dt_bit
+dt_rowend:
     add  r5, r5, #512
     add  r6, r6, #1
     cmp  r6, #8
-    blt  glyph_row
+    blt  dt_row
+    add  r0, r0, r9
     add  r0, r0, #1
     b    dt_loop
 dt_end:
     pop  {{r4-r11, pc}}
 
+@ text_width(r2 string) -> r0 pixels (r2 preserved)
+text_width:
+    push {{r2, r4, r11, lr}}
+    ldr  r11, =widths
+    mov  r0, #0
+tw_loop:
+    ldrb r4, [r2], #1
+    cmp  r4, #0
+    beq  tw_end
+    cmp  r4, #8
+    blo  tw_loop
+    sub  r4, r4, #32
+    cmp  r4, #{NGLYPH - 1}
+    movhi r4, #0
+    ldrb r4, [r11, r4]
+    and  r4, r4, #15
+    add  r0, r0, r4
+    add  r0, r0, #1
+    b    tw_loop
+tw_end:
+    cmp  r0, #0
+    subne r0, r0, #1
+    pop  {{r2, r4, r11, pc}}
+
+@ text with a 1 px drop shadow
+text_s:
+    push {{r0-r3, lr}}
+    add  r0, r0, #1
+    add  r1, r1, #1
+    ldr  r3, ={C_SHADOW | FIXED:#x}
+    bl   draw_text
+    ldm  sp, {{r0-r3}}
+    bl   draw_text
+    add  sp, sp, #16
+    pop  {{pc}}
+
+@ right-aligned at r0 (plain / with shadow)
+text_r:
+    push {{r0-r3, lr}}
+    bl   text_width
+    ldr  r1, [sp]
+    sub  r0, r1, r0
+    ldr  r1, [sp, #4]
+    ldr  r3, [sp, #12]
+    bl   draw_text
+    add  sp, sp, #16
+    pop  {{pc}}
+text_rs:
+    push {{r0-r3, lr}}
+    bl   text_width
+    ldr  r1, [sp]
+    sub  r0, r1, r0
+    ldr  r1, [sp, #4]
+    ldr  r3, [sp, #12]
+    bl   text_s
+    add  sp, sp, #16
+    pop  {{pc}}
+
+@ fmtn(r0 value 0..999, r1 buffer) -> r1 advanced; no leading zeros
+fmtn:
+    push {{r4, lr}}
+    mov  r4, #0
+    mov  r2, #0x30
+fn100:
+    cmp  r0, #100
+    subge r0, r0, #100
+    addge r2, r2, #1
+    bge  fn100
+    cmp  r2, #0x30
+    strbne r2, [r1], #1
+    movne r4, #1
+    mov  r2, #0x30
+fn10:
+    cmp  r0, #10
+    subge r0, r0, #10
+    addge r2, r2, #1
+    bge  fn10
+    cmp  r4, #0
+    cmpeq r2, #0x30
+    strbne r2, [r1], #1
+    add  r2, r0, #0x30
+    strb r2, [r1], #1
+    pop  {{r4, pc}}
     .ltorg
-str_title:
-    .asciz "CAPTURE SELECT  STYLER:"
+
+redraw:
+    push {{r4-r11, lr}}
+    mov  r0, #0
+    strb r0, [r6, #7]
+    @ sky gradient (one colour per scanline)
+    ldr  r4, ={VRAM:#x}
+    ldr  r5, =grad
+    mov  r7, #192
+g_row:
+    ldrh r0, [r5], #2
+    orr  r0, r0, r0, lsl #16
+    mov  r1, #128
+g_px:
+    str  r0, [r4], #4
+    subs r1, r1, #1
+    bne  g_px
+    subs r7, r7, #1
+    bne  g_row
+    @ header band: navy, logo-yellow and orange rules
+    mov  r0, #0
+    mov  r1, #0
+    mov  r2, #256
+    mov  r3, #20
+    ldr  r12, ={C['C_HEADER']:#x}
+    bl   rect
+    mov  r0, #0
+    mov  r1, #20
+    mov  r2, #256
+    mov  r3, #2
+    ldr  r12, ={C['C_YELLOW']:#x}
+    bl   rect
+    mov  r0, #0
+    mov  r1, #22
+    mov  r2, #256
+    mov  r3, #1
+    ldr  r12, ={C['C_ORANGE']:#x}
+    bl   rect
+    mov  r0, #8
+    mov  r1, #6
+    ldr  r2, =str_title
+    ldr  r3, ={C['C_WHITE']:#x}
+    bl   text_s
+    ldrb r0, [r6, #11]
+    ldr  r2, =styler_names
+    add  r2, r2, r0, lsl #4
+    mov  r0, #248
+    mov  r1, #6
+    ldr  r3, ={C['C_YELLOW']:#x}
+    bl   text_rs
+    @ section heading and position within the section
+    ldr  r12, =vars
+    ldrb r0, [r12, #2]
+    ldr  r1, =sections
+    add  r8, r1, r0, lsl #5
+    mov  r0, #8
+    mov  r1, #27
+    add  r2, r8, #8
+    ldr  r3, ={C['C_WHITE']:#x}
+    bl   text_s
+    sub  sp, sp, #16
+    ldrh r0, [r6, #0]
+    ldrh r1, [r8]
+    sub  r0, r0, r1
+    add  r0, r0, #1
+    mov  r1, sp
+    bl   fmtn
+    mov  r0, #0x2f
+    strb r0, [r1], #1
+    ldrh r0, [r8, #2]
+    bl   fmtn
+    mov  r0, #0
+    strb r0, [r1]
+    mov  r0, #248
+    mov  r1, #27
+    mov  r2, sp
+    ldr  r3, ={C['C_PALE']:#x}
+    bl   text_rs
+    add  sp, sp, #16
+    @ list panel
+    mov  r0, #{px}
+    mov  r1, #{py}
+    mov  r2, #{pw}
+    mov  r3, #{ph}
+    ldr  r12, ={C['C_BORDER']:#x}
+    bl   rrect
+    mov  r0, #{px + 1}
+    mov  r1, #{py + 1}
+    mov  r2, #{pw - 2}
+    mov  r3, #{ph - 2}
+    ldr  r12, ={C['C_PANEL']:#x}
+    bl   rrect
+    @ rows of the current section
+    ldrh r4, [r6, #2]
+    ldrh r9, [r8]
+    ldrh r10, [r8, #2]
+    add  r10, r9, r10
+    mov  r5, #0
+row_loop:
+    cmp  r5, #{ROWS}
+    bge  rows_done
+    add  r7, r4, r5
+    cmp  r7, r10
+    bge  rows_done
+    mov  r11, r5, lsl #2
+    add  r11, r11, r5, lsl #3
+    add  r11, r11, #{ROW_Y0}
+    ldrh r0, [r6, #0]
+    cmp  r7, r0
+    bne  no_hl
+    mov  r0, #9
+    mov  r1, r11
+    mov  r2, #226
+    mov  r3, #{ROW_H}
+    ldr  r12, ={C['C_YELLOW']:#x}
+    bl   rrect
+    mov  r0, #10
+    add  r1, r11, #{ROW_H - 1}
+    mov  r2, #224
+    mov  r3, #1
+    ldr  r12, ={C['C_ORANGE']:#x}
+    bl   rect
+    mov  r0, #12
+    add  r1, r11, #2
+    ldr  r2, =str_cursor
+    ldr  r3, ={C['C_ORANGE']:#x}
+    bl   draw_text
+no_hl:
+    ldr  r2, =battle_table
+    add  r2, r2, r7, lsl #6
+    mov  r0, #{NAME_X}
+    add  r1, r11, #2
+    ldr  r3, ={C['C_TEXT']:#x}
+    bl   draw_text
+    ldr  r2, =battle_table
+    add  r2, r2, r7, lsl #6
+    add  r2, r2, #21
+    mov  r0, #{TAG_RIGHT}
+    add  r1, r11, #2
+    ldr  r3, ={C['C_MUTED']:#x}
+    bl   text_r
+    add  r5, r5, #1
+    b    row_loop
+rows_done:
+    @ scrollbar (only when the section doesn't fit)
+    ldr  r7, [r8, #4]
+    cmp  r7, #0
+    beq  no_bar
+    mov  r0, #{tx}
+    mov  r1, #{ty}
+    mov  r2, #{tw}
+    mov  r3, #{th}
+    ldr  r12, ={C['C_TRACK']:#x}
+    bl   rect
+    ldrh r0, [r6, #0]
+    sub  r0, r0, r9
+    mul  r1, r0, r7
+    mov  r1, r1, lsr #16
+    add  r1, r1, #{ty}
+    mov  r0, #{tx}
+    mov  r2, #{tw}
+    mov  r3, #{THUMB_H}
+    ldr  r12, ={C['C_THUMB']:#x}
+    bl   rect
+no_bar:
+    mov  r0, #8
+    mov  r1, #180
+    ldr  r2, =str_foot
+    ldr  r3, ={C['C_WHITE']:#x}
+    bl   text_s
+    pop  {{r4-r11, pc}}
+    .ltorg
+
     .align 2
+@ menu-only scratch (reset whenever ov28 reloads): +0 fade frames left,
+@ +1 fade action (0 in, 1 close, 2 launch), +2 current section
+vars:
+    .byte 0, 0, 0, 0
+code_colors:
+{data(b"".join(struct.pack("<H", c) for c in CODE_COLORS))}
+    .align 2
+str_title:
+{cstr(title)}
 str_foot:
-    .asciz "L/R:SECTION START:STYLER"
+{cstr(foot)}
+str_cursor:
+{cstr(chr(0x81))}
     .align 2
 styler_names:
-    .ascii "NORMAL"
-    .byte 0, 0
-    .ascii "STRONG"
-    .byte 0, 0
-    .ascii "MAX"
-    .byte 0, 0, 0, 0, 0
+{data(b"".join(s.ljust(16, b"\0") for s in styler_names))}
 styler_table:
     .short 0
     .byte 0, 0
@@ -781,38 +1204,37 @@ styler_table:
     .short {STYLER_PRESETS[2][0]}
     .byte {STYLER_PRESETS[2][1]}, 0
 sections:
-{{sections_asm}}
-    .align 2
+{data(bytes(sect_bin))}
+grad:
+{data(grad)}
 font:
-    .space 768
+{data(fnt)}
+widths:
+{data(metrics)}
+    .align 2
 battle_table:
 """
-    asm = asm.replace("{nsect}", str(nsect)).replace("{sections_asm}", sections_asm)
     ks = Ks(KS_ARCH_ARM, KS_MODE_ARM)
     code, _ = ks.asm(asm, cave)
     code = bytearray(code)
-    fnt = font_bytes()
-    assert len(fnt) == 96 * 8 and len(code) % 4 == 0
-    code[-len(fnt):] = fnt                      # fill the .space reserved for the font
+    assert len(code) % 4 == 0
     head = bytes(code)
     # Keystone mis-assembles some conditional BL to forward labels as a
-    # branch-to-self; refuse any branch whose target is its own address.
-    try:
-        from capstone import CS_ARCH_ARM as _A, CS_MODE_ARM as _M, Cs as _Cs
-        _dis = _Cs(_A, _M).disasm(head[:len(head) - len(fnt)], cave)
-    except ImportError:                          # optional sanity check
-        _dis = []
-    for ins in _dis:
-        if ins.mnemonic.startswith("b") and ins.op_str.startswith("#"):
-            if int(ins.op_str[1:], 16) == ins.address:
-                raise SystemExit(f"assembler produced a self-branch at {ins.address:#x}: {ins.mnemonic}")
+    # branch-to-self; refuse any B/BL whose offset is -2 words (to itself).
+    for off in range(0, len(head), 4):
+        w = struct.unpack_from("<I", head, off)[0]
+        if (w & 0x0E000000) == 0x0A000000 and (w & 0xFFFFFF) == 0xFFFFFE and (w >> 28) != 0xF:
+            raise SystemExit(f"assembler produced a self-branch at {cave + off:#x}: {w:#010x}")
     table = bytearray()
-    # record: text[32] | count u8 @32 | bgm u8 @33 | arena u8 @34 | flags u8 @35 |
+    # record: name[21] | tag[11] @21 | count u8 @32 | bgm u8 @33 | arena u8 @34 | flags u8 @35 |
     #         ids u16[8] @36 | +0x154 u16 @52 | +0x156 u16 @54 | +0x150 u8 @56 | +0x140 u16 @58
     for i, e in enumerate(blist):
         rec = bytearray(64)
-        txt = entry_text(i, e["desc"], e["label"]).encode("ascii")
-        rec[:len(txt)] = txt
+        name, tag = (s.encode("latin-1") for s in labels[i])
+        assert len(name) < 21 and len(tag) < 11, (name, tag)
+        assert text_px(name, metrics) <= NAME_MAX_PX and NAME_X + text_px(name, metrics) + 6 + text_px(tag, metrics) <= TAG_RIGHT, (name, tag)
+        rec[:len(name)] = name
+        rec[21:21 + len(tag)] = tag
         rec[32:36] = bytes([len(e["ids"]), e["bgm"] & 0xFF, e["arena"] & 0xFF, e["flags"]])
         for k, rid in enumerate(e["ids"]):
             struct.pack_into("<H", rec, 36 + 2 * k, rid)
@@ -836,7 +1258,8 @@ battle_table:
         w = csv.writer(fh)
         w.writerow(["index", "menu_text", "ranger_ids", "names", "bgm", "arena", "flags", "capture_script", "v154", "v156", "v140", "map", "arena_from"])
         for i, e in enumerate(blist):
-            w.writerow([i, entry_text(i, e["desc"], e["label"]), " ".join(map(str, e["ids"])),
+            w.writerow([i, entry_text(i, *(t.replace("\x83", "x").replace("\x82", "e") for t in labels[i])),
+                        " ".join(map(str, e["ids"])),
                         " | ".join(ranger_ids.name_of(x) for x in e["ids"]), e["bgm"], e["arena"],
                         e["flags"], e["s150"], e["v154"], e["v156"], e["v140"], e["map"], e["arena_from"]])
     end = cave + len(cave_bytes)
