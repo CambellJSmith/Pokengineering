@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Build the Capture Select ROM and launch it in DeSmuME.
+# Build the Capture Select ROM and launch it in melonDS (or DeSmuME).
 #   ./play_capture_select.sh            # build (if needed) + launch
 #   REBUILD=1 ./play_capture_select.sh  # force a full rebuild
-# Needs: python3 and desmume (keystone-engine only with BUILD_PATCH=1).
+# Needs: python3 and melonDS or desmume (keystone-engine only with BUILD_PATCH=1).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
@@ -32,12 +32,14 @@ python3 tools/patch_code_rom.py "$LABELLED" --patches "$PATCH" --output "$ROM"
 
 echo "==> ROM md5: $(md5sum "$ROM" | cut -d' ' -f1)"
 
-EMU="${DESMUME:-}"
+EMU="${EMULATOR:-${DESMUME:-}}"
 if [[ -z "$EMU" ]]; then
-    for c in desmume desmume-glade desmume-cli; do
+    # melonDS first: some desktop DeSmuME builds load their key bindings shifted
+    # (button N gets the key of button N/2), which maps Down to "close lid".
+    for c in melonDS melonds desmume desmume-glade desmume-cli; do
         command -v "$c" >/dev/null && { EMU="$c"; break; }
     done
 fi
-[[ -n "$EMU" ]] || { echo "DeSmuME not found (apt install desmume, or set DESMUME=/path)"; echo "ROM: $ROOT/$ROM"; exit 1; }
+[[ -n "$EMU" ]] || { echo "No emulator found (install melonDS or DeSmuME, or set EMULATOR=/path)"; echo "ROM: $ROOT/$ROM"; exit 1; }
 echo "==> Launching $ROM in $EMU (title menu: tap Capture Select, or press SELECT)"
 exec "$EMU" "$ROM"
