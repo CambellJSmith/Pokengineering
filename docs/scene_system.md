@@ -360,7 +360,7 @@ handler ov3 `0x020FE094` → `CaptureSetup_Add`) and `3C05` (add + spawn,
 
 | tutorial | capture script | targets added |
 |---|---|---|
-| 1 | 1506 | none (explanation only) |
+| 1 | 1506 | none: a stub, never started by the story; it crashes with count 0 (§10) |
 | 2 | 1507 | Pikachu (386) ×2, spawned |
 | 3 | 1508 | Cyndaquil (391); verified in emulator: "The Poké Assist tutorial has begun." |
 | 4 | 1509 | Pikachu (388) |
@@ -518,7 +518,9 @@ NORMAL keeps the Clear defaults 1/10). Verified in the emulator: `+0x75/76 =
 - every distinct scripted field capture with **all** its targets (up to 8)
   and options (BGM, arena, flags `+0x142`, `+0x140`, `+0x154`, `+0x156`),
   labelled with the event (e.g. `041 Beldum x8 C031_AF008_1`);
-- the 7 capture tutorials (`Capture tutorial TUTORIALn`, `+0x150 = n`);
+- the 7 capture tutorials (`Capture tutorial TUTORIALn`, `+0x150 = n`; count 0,
+  because the tutorial's capture script adds its own targets, except
+  Tutorial 1, which gets Pikachu 386 from the menu: see *Tutorials* below);
 - every sky capture: scripted `1C10` and free-flight `SPKD` enemies (`SKY`);
 - every co-op capture Pokémon (`CO-OP`, from `MPCP`);
 - every remaining wild Ranger ID (`WILD m010_02` …);
@@ -610,7 +612,7 @@ runs.
 
 2026-11-18 additions, verified the same way: `041 Beldum x8` → `count=8`
 (eight Beldum on screen); `145 Capture tutorial TUTORIAL1` → `count=0
-s150=1`; `162 Latios SKY` → LATIOS boss capture; `002 Buizel+Croagunk` →
+s150=1` (this aborts under melonDS; Tutorial 1 now gets a target, see *Tutorials* below); `162 Latios SKY` → LATIOS boss capture; `002 Buizel+Croagunk` →
 `flags=0x2 v154=13 bgm=1` copied from the event.
 
 **Finishing a capture** (`tools/emu/test_capture_finish.py`, 2026-11-18):
@@ -642,9 +644,25 @@ styler (Lv.25 gives `060/060` energy in the capture), fades out on A into a
 normal Pichu capture, reopens on the same entry after a forced exit, and B
 fades out to the boot scene.
 
-**Known issue:** launching `Tutorial 1` ("Capture basics") data-aborts in
-melonDS during the capture scene (ARM9 abort at `0x020F9BCC`, frame ~1065).
-This already happens with the shipped patch before the 2026-11-19 restyle.
+**Tutorials (fixed 2026-11-19).** `Tutorial 1` used to data-abort in melonDS
+about 65 frames after launch (ARM9 data abort, `lr = 0x020F9BCC`), with the
+patch on `main` too. Its capture script 1506 is a stub that no story
+event starts: it runs the intro that every tutorial shares (`3C00` … `3C0D`, `3435`) and
+then starts the capture (`3C0A`) without adding a Pokémon. Tutorials 2–7 add
+theirs with `3C03`/`3C04` before that point. With count 0,
+`CCaptureContext::Init` builds a one-slot target array (`*0x0211E22C`) whose
+slot 0 stays NULL. The Enter of the capture state at `0x02122498` (ov3 `0x020F93E4` →
+`0x020F9AEC`) does `get(0)` (ARM9 `0x02012DD0`) and reads the species at
+`[NULL + 0x1E6]` (ov3 `0x020F9BC4`). DeSmuME reads address 0 and carries on;
+the MPU aborts. The menu now adds Pikachu 386 (the tutorial Pikachu of
+tutorials 2 and 7) for Tutorial 1 (`TUTORIAL_MENU_TARGET` in `build_patch.py`),
+and the entry is listed as `Pikachu  Tutorial 1`. Verified in melonDS:
+it runs "The Capture tutorial has begun." against a Pikachu. All seven
+tutorials (`R` to Tutorials, `DOWN` × n, `A`) launch without an abort, run for
+1,000 frames, and after a forced exit (`EXITCAP`) return to the title with the
+menu reopened on the same entry. Tutorial 6 (script 1511, also unused by the
+story) shows a placeholder message box reading `NONE` over its Cyndaquil;
+that text comes from the game's data, not from the patch.
 
 **Not yet verified:** finishing a capture with real (touch) input (result/browser
 states may touch save data); real hardware/flashcarts.
